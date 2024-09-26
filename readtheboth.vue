@@ -100,7 +100,7 @@
   
         if (fileType.includes('csv')) {
           this.readCSV(file);
-        } else if (fileType.includes('excel')) {
+        } else if (fileType.includes('sheet') || fileType.includes('excel')) {
           this.readExcel(file);
         } else {
           alert('Formato de arquivo não suportado. Selecione um arquivo CSV ou Excel.');
