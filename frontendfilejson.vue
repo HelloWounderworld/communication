@@ -44,6 +44,7 @@
         </div>
 
         <button v-if="downloadUrl" @click="downloadFile">Baixar Arquivo</button>
+        <button v-if="jsonData" @click="exportToExcel">Exportar JSON para Excel</button>
     </div>
 </template>
 
@@ -76,6 +77,34 @@ export default {
         selectFile() {
             this.$refs.fileInput.click();
         },
+        async processFile(file) {
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                if (fileExtension === 'csv') {
+                    const csvData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+                    this.csvData = csvData;
+                    this.headers = csvData[0];
+                    this.jsonData = csvData.slice(1).map(row => {
+                        return this.headers.reduce((acc, header, index) => {
+                            acc[header] = row[index];
+                            return acc;
+                        }, {});
+                    });
+                } else {
+                    const excelData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                    this.excelData = excelData;
+                    this.excelHeaders = Object.keys(excelData[0]);
+                    this.jsonData = excelData; // Armazena o JSON do Excel
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        },
         async uploadFile() {
             if (!this.jsonData) {
                 alert('Por favor, carregue um arquivo válido primeiro.');
@@ -95,83 +124,33 @@ export default {
                     throw new Error('Erro na requisição: ' + response.status);
                 }
 
-                this.message = 'Arquivo enviado com sucesso!';
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                this.downloadUrl = url; // Armazena a URL do blob para download
 
-                // Obter a URL do arquivo para download
-                this.downloadUrl = await response.text(); // Supondo que a URL do arquivo é retornada como texto
+                this.message = 'Arquivo enviado com sucesso!';
             } catch (error) {
                 this.message = 'Erro ao enviar o arquivo: ' + error.message;
             }
-        },
-        processFile(file) {
-            const fileType = file.type;
-
-            if (fileType.includes('csv')) {
-                this.readCSV(file);
-            } else if (fileType.includes('sheet') || fileType.includes('excel')) {
-                this.readExcel(file);
-            } else {
-                alert('Formato de arquivo não suportado. Selecione um arquivo CSV ou Excel.');
-            }
-        },
-        readCSV(file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const text = event.target.result;
-                Papa.parse(text, {
-                    complete: (results) => {
-                        this.headers = results.data[0]; // Primeira linha como cabeçalhos
-                        this.csvData = results.data.slice(1); // Dados sem cabeçalhos
-                        this.excelData = []; // Limpa dados do Excel
-                        this.excelHeaders = []; // Limpa cabeçalhos do Excel
-
-                        // Converte para JSON
-                        this.jsonData = results.data.slice(1).map(row => {
-                            return this.headers.reduce((obj, header, index) => {
-                                obj[header] = row[index];
-                                return obj;
-                            }, {});
-                        });
-                    },
-                    header: false
-                });
-            };
-            reader.readAsText(file);
-        },
-        readExcel(file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const data = new Uint8Array(event.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-                this.excelHeaders = jsonData[0]; // Primeira linha como cabeçalhos
-                this.excelData = jsonData.slice(1); // Dados sem cabeçalhos
-                this.csvData = []; // Limpa dados do CSV
-                this.headers = []; // Limpa cabeçalhos do CSV
-
-                // Converte para JSON
-                this.jsonData = jsonData.slice(1).map(row => {
-                    return this.excelHeaders.reduce((obj, header, index) => {
-                        obj[header] = row[index];
-                        return obj;
-                    }, {});
-                });
-            };
-            reader.readAsArrayBuffer(file);
         },
         downloadFile() {
             if (this.downloadUrl) {
                 const link = document.createElement('a');
                 link.href = this.downloadUrl;
-                link.setAttribute('download', 'arquivo_baixado'); // Nome padrão do arquivo
+                link.setAttribute('download', 'arquivo.xlsx'); // Nome do arquivo a ser baixado
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+                window.URL.revokeObjectURL(this.downloadUrl); // Libera a URL do blob
             }
+        },
+        exportToExcel() {
+            const worksheet = XLSX.utils.json_to_sheet(this.jsonData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Dados');
+
+            // Gera um arquivo Excel e inicia o download
+            XLSX.writeFile(workbook, 'dados.xlsx');
         }
     }
 };
@@ -182,23 +161,6 @@ export default {
     border: 2px dashed #ccc;
     padding: 20px;
     text-align: center;
-    margin: 20px;
-}
-
-.drop-zone:hover {
-    background-color: #f0f0f0;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-}
-
-th,
-td {
-    border: 1px solid #ccc;
-    padding: 8px;
-    text-align: left;
+    margin-bottom: 20px;
 }
 </style>
