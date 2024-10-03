@@ -3,7 +3,7 @@
         <h1>Monitoramento de Memória</h1>
         <p>Uso de memória: {{ memoryUsage }} MB</p>
         <button @click="startRecursiveFunction">Iniciar Função Recursiva</button>
-        <button @click="stopMonitoring">Parar Monitoramento</button>
+        <!-- <button @click="stopMonitoring">Parar Monitoramento</button> -->
     </div>
 </template>
 
