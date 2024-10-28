@@ -7,7 +7,8 @@
                         :class="`progressbar__svg-circle circle-${progress.label.toLowerCase()} shadow-${progress.label.toLowerCase()}`"
                         :style="{
                             strokeDashoffset: strokeDashoffset(progress.percent),
-                            stroke: progress.color
+                            stroke: progress.color,
+                            transition: 'stroke-dashoffset 1s ease-in-out'
                         }"></circle>
                 </svg>
                 <span class="progressbar__text shadow-{{ progress.label.toLowerCase() }}">{{ progress.label }}</span>
