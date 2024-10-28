@@ -1,0 +1,24 @@
+.time-passed
+  %p
+    0 years passed
+  %span
+    0 hours passed
+  %seconds
+    0 days passed
+.heading 
+  %h2
+    Solar System 2.0 Pure CSS
+      
+- @planets = ['sun','mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune']
+.space
+  - @planets.each do |planet|
+    .planet-orbit
+      .planet-square
+        %div{:class=>"#{planet}"}
+        %div{:class=>"ring-#{planet}"}
+        %div{:class=>"orbit-#{planet}"}
+          %div{:class=>"moon-#{planet}"}
+  - 100.times do
+    .star
+%p
+  0

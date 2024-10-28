@@ -1,0 +1,256 @@
+body, html {
+  padding:0;
+  margin:0;
+  background:rgba(0,0,0,1);
+}
+
+.space {
+  opacity:0.9;
+  transform-style: preserve-3d;
+  animation: rotate 10s linear infinite;
+  height:1000px;
+  top:0px;
+  overflow:hidden;
+
+}
+
+.heading {
+  width:550px;
+  font-family: 'Palanquin', sans-serif;
+  color:white;
+  text-align:center;
+  font-size:30px;
+  position:absolute;
+  margin-left:calc(50% - 250px);
+  line-height:40px;
+}
+
+.heading > h2 > small {
+  font-size:20px;
+}
+
+p {
+  font-family: 'Palanquin', sans-serif;
+  font-size:15px;
+  position: absolute;
+  top:0px;
+  color:white;
+  margin-left:20px;
+  text-align:center;
+  z-index:100;
+}
+
+p:nth-child(2) {
+  margin-top:40px;
+}
+
+span {
+  font-family: 'Palanquin', sans-serif;
+  font-size:15px;
+  position: absolute;
+  margin-top:55px;
+  color:white;
+  margin-left:20px;
+  text-align:center;
+  z-index:100;
+}
+
+seconds {
+   font-family: 'Palanquin', sans-serif;
+  font-size:15px;
+  position: absolute;
+  margin-top:35px;
+  color:white;
+  margin-left:20px;
+  text-align:center;
+  z-index:100;
+}
+
+$diametre:85px;
+$largest-radius: 550px;
+
+$planet-rotational-speed: 0, 0.2, 0.6, 1, 1.9, 11.9, 29.5, 84, 164.8;
+
+@for $i from 1 through 9 {
+  
+  .planet-orbit:nth-child(#{$i}) {
+    
+    $dimensions: $i * $diametre;
+    $top: $largest-radius - ($i * $diametre/2);
+    
+    $left: calc(50% - (#{$i} * #{$diametre}/2));
+    
+    $orbital-multiplier: nth($planet-rotational-speed, $i);
+     
+    border:1px solid rgba(173, 216, 230, 0.5);
+    width: $dimensions;
+    height: $dimensions;
+    border-radius:50%;
+    position:absolute;
+    transform-style: preserve-3d;
+    margin-top: $top;
+    margin-left: $left;
+    z-index:10;
+    animation: orbit-#{$i} $orbital-multiplier*2s linear infinite;
+    
+  }
+  
+  
+  @keyframes orbit-#{$i} {
+    from{
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+   .planet-square:nth-child(#{$i}) {
+     
+    $orbital-multiplier: nth($planet-rotational-speed, $i);
+     
+    width: 71%;
+    height: 71%;
+    position:relative;
+    margin: 0 auto;
+    margin-top:14.5%;
+     transform-style: preserve-3d;
+     
+  }
+  
+}
+
+$planets: 'mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune';
+
+$planet-colours: '#e5e5e5', '#ffc04c', '#66b2ff', '#ff6666', '#e59400', '#ffd27f', '#b2ffff', '#00b3b3';
+
+$planet-diametres: 1, 3, 4, 2, 10, 7, 6, 5;
+$counter: 0;
+
+@for $i from 1 through length($planets) {
+  
+   $planet: nth($planets, $i);
+   $colour: nth($planet-colours, $i);
+  
+   $dimensions: nth($planet-diametres,$i)*5px;
+  
+  .#{$planet} {
+    width:$dimensions;
+    height:$dimensions;
+    border-radius:50%;
+    box-shadow: 0 0 10px #{$colour};
+    background:linear-gradient(to bottom right, #{$colour}, white);
+    opacity:1;
+    margin-top:-$dimensions/2;
+    margin-left:-$dimensions/2;
+  }
+  
+  .ring-#{$planet} {
+    width:$dimensions + 10px;
+    height:$dimensions + 10px;
+    border-radius:50%;
+    box-shadow: 0 0 5px #{$colour};
+    margin-top:-($dimensions + 6px);
+    margin-left:-($dimensions/2 + 6px);
+    border:1px solid gray;
+    display:none;
+    opacity:0.8;
+    animation:ring-orbit 3s linear infinite;
+  }
+  
+  .orbit-#{$planet} {
+    width:$dimensions + 10px;
+    height:$dimensions + 10px;
+    border-radius:50%;
+    margin-top:-($dimensions + 6px);
+    margin-left:-($dimensions/2 + 6px);
+    display:none;
+    opacity:0.8;
+    animation:moon-orbit 1s linear infinite;
+  }
+  
+  .moon-#{$planet} {
+    width:6px;
+    height:6px;
+    box-shadow: 0 0 5px white;
+    display:none;
+    background:white;
+    border-radius:50%;
+  }
+  
+  @keyframes moon-orbit {
+    from {
+      transform: rotate(0);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+   @keyframes ring-orbit {
+    from {
+      transform: rotateX(60deg) rotateY(150deg) rotate(0);
+    }
+    to {
+      transform: rotateX(60deg) rotateY(150deg) rotate(360deg);
+    }
+  }
+ 
+}
+
+.planet-orbit:nth-child(1) {
+  background:#FFE000;
+  box-shadow:0 0 100px #FFE000;
+  opacity:1;
+  border:none;
+  border-radius:50%;
+}
+
+$stars: 100;
+
+@for $i from 0 through $stars {
+  .star:nth-child(#{$i}) {
+
+    $xPos: random(1500) + px;
+    $yPos: random(1000) + px;
+
+    $size: random(2) + px;
+    
+    width:$size;
+    height:$size;
+    position: absolute;
+    margin-top:$yPos;
+    margin-left:$xPos;
+    background:#ffffff;
+    border-radius:50%;
+    animation: glow-#{$i} 1s linear infinite;
+    animation-delay: $i*0.005s;
+
+    
+  }
+
+  @keyframes glow-#{$i} {
+    0% {
+      opacity:1;
+    }
+    100% {
+      opacity:0.5;
+    }
+  }  
+}
+
+.ring-saturn {
+  display:block;
+}
+
+.orbit-earth {
+  display:block;
+  border:none;
+  box-shadow:none;
+  border:1px solid rgba(173, 216, 230, 0.5);
+}
+
+.moon-earth {
+  display: block;
+}
+
