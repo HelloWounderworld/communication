@@ -28,3 +28,7 @@ Simple structure representation:
     │   ├── local     # Instalações locais
     │   └── share     # Arquivos compartilhados
     └── var           # Arquivos variáveis, como logs e bancos de dados
+
+## Mysql:
+
+    https://zenn.dev/kamillle/articles/2536ddf88abf73?form=MG0AV3
