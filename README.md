@@ -32,3 +32,5 @@ Simple structure representation:
 ## Mysql:
 
     https://zenn.dev/kamillle/articles/2536ddf88abf73?form=MG0AV3
+
+    https://stackoverflow.com/questions/45467988/docker-container-wont-start-with-mysql-docker-image
