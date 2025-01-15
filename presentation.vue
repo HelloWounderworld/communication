@@ -1,15 +1,20 @@
 <template>
-    <div class="container">
-        <div class="left-column">
-            <textarea v-model="inputText" placeholder="Digite seu texto aqui..."></textarea>
-        </div>
-        <div class="middle-column">
-            <button @click="processText">Processar</button>
-        </div>
-        <div class="right-column">
-            <ul>
-                <li v-for="(title, index) in titles" :key="index">{{ title }}</li>
-            </ul>
+    <div class="app-container">
+        <header class="header">
+            <h1>Título do Processador de Texto</h1>
+        </header>
+        <div class="container">
+            <div class="left-column">
+                <textarea v-model="inputText" placeholder="Digite seu texto aqui..."></textarea>
+            </div>
+            <div class="middle-column">
+                <button @click="processText">Processar</button>
+            </div>
+            <div class="right-column">
+                <ul>
+                    <li v-for="(title, index) in titles" :key="index">{{ title }}</li>
+                </ul>
+            </div>
         </div>
     </div>
 </template>
@@ -47,6 +52,20 @@ export default {
 </script>
 
 <style>
+.app-container {
+    max-width: 800px;
+    /* Largura máxima da aplicação */
+    margin: auto;
+    /* Centraliza a aplicação na tela */
+}
+
+.header {
+    text-align: center;
+    /* Centraliza o texto do cabeçalho */
+    margin-bottom: 20px;
+    /* Espaçamento abaixo do cabeçalho */
+}
+
 .container {
     display: grid;
     grid-template-columns: 1fr 200px 1fr;
