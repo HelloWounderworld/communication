@@ -12,7 +12,7 @@
             </div>
             <div class="right-column">
                 <ul>
-                    <li v-for="(title, index) in titles" :key="index">{{ title }}</li>
+                    <li v-for="(title, index) in titles" :key="index" class="title-item">{{ title }}</li>
                 </ul>
             </div>
         </div>
@@ -29,8 +29,15 @@ export default {
     },
     methods: {
         processText() {
-            // Aqui você pode adicionar lógica para gerar títulos a partir do texto
-            this.titles = this.generateTitles(this.inputText);
+            // Limpa os títulos antes de gerar novos
+            this.titles = [];
+            // Gera títulos e os adiciona com um pequeno atraso para a animação
+            const newTitles = this.generateTitles(this.inputText);
+            newTitles.forEach((title, index) => {
+                setTimeout(() => {
+                    this.titles.push(title);
+                }, index * 100); // Atraso de 100ms entre cada título
+            });
         },
         generateTitles(text) {
             // Exemplo simples de geração de títulos
@@ -104,10 +111,25 @@ ul {
     padding: 0;
 }
 
-li {
+.title-item {
     margin: 10px 0;
     padding: 10px;
     background-color: #f0f0f0;
     border-radius: 5px;
+    opacity: 0;
+    /* Inicialmente invisível */
+    transform: translateX(100%);
+    /* Começa fora da tela à direita */
+    animation: slideIn 0.5s forwards;
+    /* Animação ao aparecer */
+}
+
+@keyframes slideIn {
+    to {
+        opacity: 1;
+        /* Torna visível */
+        transform: translateX(0);
+        /* Move para a posição original */
+    }
 }
 </style>
