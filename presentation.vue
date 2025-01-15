@@ -1,19 +1,37 @@
 <template>
-    <div class="app-container">
-        <header class="header">
-            <h1>Título do Processador de Texto</h1>
-        </header>
-        <div class="container">
-            <div class="left-column">
-                <textarea v-model="inputText" placeholder="Digite seu texto aqui..."></textarea>
-            </div>
-            <div class="middle-column">
-                <button @click="processText">Processar</button>
-            </div>
-            <div class="right-column">
-                <ul>
-                    <li v-for="(title, index) in titles" :key="index" class="title-item">{{ title }}</li>
-                </ul>
+    <div class="wrapper">
+        <div class="box">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+        </div>
+        <div class="app-container">
+            <header>
+                <div class="two alt-two">
+                    <h1>Alternate
+                        <span>Example Tagline Text</span>
+                    </h1>
+                </div>
+            </header>
+            <div class="container">
+                <div class="left-column">
+                    <textarea v-model="inputText" placeholder="Digite seu texto aqui..."></textarea>
+                </div>
+                <div class="middle-column">
+                    <button @click="processText">Processar</button>
+                </div>
+                <div class="right-column">
+                    <ul>
+                        <li v-for="(title, index) in titles" :key="index" class="title-item">{{ title }}</li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
@@ -58,27 +76,50 @@ export default {
 };
 </script>
 
-<style>
-.app-container {
-    max-width: 800px;
-    /* Largura máxima da aplicação */
-    margin: auto;
-    /* Centraliza a aplicação na tela */
+<style scoped>
+.two h1 {
+    text-transform: capitalize;
 }
 
-.header {
+.two h1:before {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 60px;
+    height: 2px;
+    content: "";
+    background-color: #c50000;
+}
+
+.two h1 span {
+    font-size: 13px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    line-height: 3em;
+    padding-left: 0.25em;
+    color: rgba(0, 0, 0, 0.4);
+    padding-bottom: 10px;
+}
+
+.alt-two h1 {
     text-align: center;
-    /* Centraliza o texto do cabeçalho */
-    margin-bottom: 20px;
-    /* Espaçamento abaixo do cabeçalho */
+}
+
+.alt-two h1:before {
+    left: 50%;
+    margin-left: -30px;
+}
+
+.app-container {
+    max-width: 800px;
+    margin: auto;
 }
 
 .container {
     display: grid;
     grid-template-columns: 1fr 200px 1fr;
-    /* Três colunas */
     gap: 20px;
-    /* Espaçamento entre colunas */
 }
 
 .left-column {
@@ -99,11 +140,13 @@ export default {
 textarea {
     width: 100%;
     height: 300px;
+    resize: none;
 }
 
 button {
     padding: 10px 20px;
     font-size: 16px;
+    cursor: pointer;
 }
 
 ul {
@@ -117,19 +160,110 @@ ul {
     background-color: #f0f0f0;
     border-radius: 5px;
     opacity: 0;
-    /* Inicialmente invisível */
     transform: translateX(100%);
-    /* Começa fora da tela à direita */
     animation: slideIn 0.5s forwards;
-    /* Animação ao aparecer */
+}
+
+.wrapper {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #24C6DC;
+    background: -webkit-linear-gradient(to bottom, #514A9D, #24C6DC);
+    background: linear-gradient(to bottom, #514A9D, #24C6DC);
+}
+
+.box div {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    background-color: transparent;
+    border: 6px solid rgba(255, 255, 255, 0.8);
+}
+
+.box div:nth-child(1) {
+    top: 12%;
+    left: 42%;
+    animation: animate 10s linear infinite;
+}
+
+.box div:nth-child(2) {
+    top: 70%;
+    left: 50%;
+    animation: animate 7s linear infinite;
+}
+
+.box div:nth-child(3) {
+    top: 17%;
+    left: 6%;
+    animation: animate 9s linear infinite;
+}
+
+.box div:nth-child(4) {
+    top: 20%;
+    left: 60%;
+    animation: animate 10s linear infinite;
+}
+
+.box div:nth-child(5) {
+    top: 67%;
+    left: 10%;
+    animation: animate 6s linear infinite;
+}
+
+.box div:nth-child(6) {
+    top: 80%;
+    left: 70%;
+    animation: animate 12s linear infinite;
+}
+
+.box div:nth-child(7) {
+    top: 60%;
+    left: 80%;
+    animation: animate 15s linear infinite;
+}
+
+.box div:nth-child(8) {
+    top: 32%;
+    left: 25%;
+    animation: animate 16s linear infinite;
+}
+
+.box div:nth-child(9) {
+    top: 90%;
+    left: 25%;
+    animation: animate 9s linear infinite;
+}
+
+.box div:nth-child(10) {
+    top: 20%;
+    left: 80%;
+    animation: animate 5s linear infinite;
+}
+
+@keyframes animate {
+    0% {
+        transform: scale(0) translateY(-90px) rotate(360deg);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1.3) translateY(-90px) rotate(-180deg);
+        border-radius: 50%;
+        opacity: 0;
+    }
 }
 
 @keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+
     to {
         opacity: 1;
-        /* Torna visível */
         transform: translateX(0);
-        /* Move para a posição original */
     }
 }
 </style>
