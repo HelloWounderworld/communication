@@ -2,46 +2,47 @@ from datetime import datetime, timedelta
 from elasticsearch import Elasticsearch
 
 class ElasticSimpleQuery:
-    def __init__(self, 
-               hosts=["http://localhost:9200"],
-               index_padrao="seu_indice",
-               campo_data="data_cadastro",
-               campo_genero="genero"):
-        
-        self.es = Elasticsearch(hosts)
-        self.index = index_padrao
-        self.campo_data = campo_data
-        self.campo_genero = campo_genero
+    def __init__(self):
+        self.es = Elasticsearch(["http://localhost:9200"])
+        self.indice = "meu_indice"
+        self.campo_data = "data"
+        self.campo_genero = "genero"
 
-    def buscar_por_data_genero(self, inicio, fim, genero, index=None):
-        """Busca documentos entre duas datas com filtro de gênero"""
+    def buscar(self, inicio_str: str, fim_str: str, genero: str) -> list:
+        """Busca por datas no formato yyyy/MM/dd e gênero"""
+        
+        # Validação rigorosa do formato
+        try:
+            inicio = datetime.strptime(inicio_str, "%Y/%m/%d")
+            fim = datetime.strptime(fim_str, "%Y/%m/%d")
+        except ValueError:
+            raise ValueError("Formato inválido. Use yyyy/MM/dd (ex: 2025/03/11)")
+
+        # Query otimizada para o novo formato
         query = {
             "query": {
                 "bool": {
-                    "must": [{
-                        "range": {
+                    "must": [
+                        {"range": {
                             self.campo_data: {
-                                "gte": inicio.isoformat(),
-                                "lte": fim.isoformat()
+                                "gte": inicio.strftime("%Y/%m/%d"),
+                                "lte": fim.strftime("%Y/%m/%d"),
+                                "format": "yyyy/MM/dd"
                             }
-                        }
-                    }, {
-                        "match": {
-                            self.campo_genero: genero.lower()
-                        }
-                    }]
+                        }},
+                        {"term": {f"{self.campo_genero}.keyword": genero.lower()}}
+                    ]
                 }
             }
         }
-        
-        try:
-            resposta = self.es.search(
-                index=index or self.index,
+
+        return [
+            hit["_source"] 
+            for hit in self.es.search(
+                index=self.indice, 
                 body=query
-            )
-            return [hit["_source"] for hit in resposta["hits"]["hits"]]
-        except:
-            return None
+            )["hits"]["hits"]
+        ]
         
 def gerar_datas(inicio: str, fim: str) -> list:
     """Gera datas entre início e fim (formato YYYY-MM-DD)"""
