@@ -67,3 +67,84 @@ onMounted(() => {
     border-color: #ffecb5;
 }
 </style>
+
+<script setup lang="ts">
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+
+// Variável do v-model do textarea
+const refNewsArea = ref<string>('')
+
+// Texto capturado da seleção
+const textoSelecionado = ref<string>('')
+
+// Função que captura a seleção dentro do textarea
+function capturarSelecao(e: Event) {
+  const el = e.target as HTMLTextAreaElement
+  const start = el.selectionStart
+  const end = el.selectionEnd
+
+  if (start !== end) {
+    textoSelecionado.value = el.value.substring(start, end)
+  }
+}
+
+onMounted(() => {
+  // Você pode ouvir o evento mouseup, keyup ou selectionchange
+  const textarea = document.querySelector('textarea')
+  if (textarea) {
+    textarea.addEventListener('mouseup', capturarSelecao)
+    textarea.addEventListener('keyup', capturarSelecao)
+  }
+})
+
+onBeforeUnmount(() => {
+  const textarea = document.querySelector('textarea')
+  if (textarea) {
+    textarea.removeEventListener('mouseup', capturarSelecao)
+    textarea.removeEventListener('keyup', capturarSelecao)
+  }
+})
+</script>
+
+<template>
+  <div class="layout">
+    <div class="aba aba-esquerda">
+      <h2>Digite e selecione algo:</h2>
+      <v-textarea
+        v-model="refNewsArea"
+        label="Área de texto"
+        auto-grow
+        outlined
+        rows="6"
+      />
+    </div>
+
+    <div class="aba aba-direita">
+      <h2>Texto selecionado:</h2>
+      <p v-if="textoSelecionado">{{ textoSelecionado }}</p>
+      <p v-else><em>Nada selecionado ainda.</em></p>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.layout {
+  display: flex;
+  gap: 2rem;
+  padding: 2rem;
+}
+
+.aba {
+  flex: 1;
+  border: 2px solid #ccc;
+  padding: 1rem;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.aba-direita {
+  background: #fff3cd;
+  border-color: #ffecb5;
+}
+</style>
+
