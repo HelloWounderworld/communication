@@ -356,6 +356,18 @@ onBeforeUnmount(() => {
   .clear-btn:hover {
     background-color: #d32f2f;
   }
+
+  .label-row {
+  display: flex;
+  justify-content: space-between; /* label à esquerda, botão à direita */
+  align-items: center;
+  position: absolute;
+  top: 10px;
+  left: 0;
+  right: 0;
+  padding: 0 14px; /* mesmo padding do textarea */
+  pointer-events: none; /* label não bloqueia clique */
+}
   </style>
   
 
