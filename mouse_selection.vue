@@ -220,5 +220,142 @@ onBeforeUnmount(() => {
     color: #1976d2;
   }
   </style>
+ 
+ <template>
+    <div class="textarea-wrapper">
+      <label class="textarea-label">Digite algo</label>
+      <div
+        class="custom-textarea"
+        contenteditable="true"
+        @focus="focado = true"
+        @blur="focado = false"
+        @input="refNewsArea = $event.target.innerHTML"
+        @paste="handlePaste"
+        ref="editableDiv"
+        v-html="refNewsArea"
+      ></div>
+  
+      <!-- Botão para apagar -->
+      <button class="clear-btn" @click="clearText">Apagar</button>
+    </div>
+  </template>
+  
+  <script setup lang="ts">
+  import { ref } from 'vue'
+  
+  const refNewsArea = ref<string>('')
+  const focado = ref(false)
+  const editableDiv = ref<HTMLElement | null>(null)
+  
+  // Função para apagar o texto
+  function clearText() {
+    refNewsArea.value = ''
+    if (editableDiv.value) {
+      editableDiv.value.innerHTML = ''
+    }
+  }
+  
+  // Função para colar texto puro mantendo quebras de linha
+  function handlePaste(event: ClipboardEvent) {
+    event.preventDefault()
+    const text = event.clipboardData?.getData('text/plain') || ''
+    const formattedText = text
+      .replace(/\n/g, '<br>') // preserva quebras de linha
+    insertHtmlAtCursor(formattedText)
+  }
+  
+  // Função auxiliar para inserir HTML na posição do cursor
+  function insertHtmlAtCursor(html: string) {
+    const sel = window.getSelection()
+    if (!sel || !sel.getRangeAt || !sel.rangeCount) return
+    const range = sel.getRangeAt(0)
+    range.deleteContents()
+    const el = document.createElement('div')
+    el.innerHTML = html
+    const frag = document.createDocumentFragment()
+    let node
+    let lastNode
+    while ((node = el.firstChild)) {
+      lastNode = frag.appendChild(node)
+    }
+    range.insertNode(frag)
+    // Move o cursor para o final do conteúdo inserido
+    if (lastNode) {
+      range.setStartAfter(lastNode)
+      range.collapse(true)
+      sel.removeAllRanges()
+      sel.addRange(range)
+    }
+  }
+  </script>
+  
+  <style scoped>
+  .textarea-wrapper {
+    position: relative;
+    font-family: Roboto, sans-serif;
+    width: 100%;
+    max-width: 600px;
+  }
+  
+  /* label flutuante */
+  .textarea-label {
+    position: absolute;
+    top: 10px;
+    left: 14px;
+    background: white;
+    padding: 0 4px;
+    color: #6b6b6b;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    pointer-events: none;
+  }
+  
+  /* área editável */
+  .custom-textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 24px 14px 8px 14px;
+    border: 1px solid #bdbdbd;
+    border-radius: 8px;
+    font-size: 1rem;
+    line-height: 1.5;
+    background-color: white;
+    outline: none;
+    resize: none;
+    overflow-y: auto;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  /* quando focado */
+  .custom-textarea:focus {
+    border-color: #1976d2;
+    box-shadow: 0 0 0 1px #1976d2;
+  }
+  
+  /* label sobe quando há texto ou foco */
+  .custom-textarea:focus + .textarea-label,
+  .textarea-wrapper:has(.custom-textarea:not(:empty)) .textarea-label {
+    top: -8px;
+    left: 10px;
+    font-size: 0.75rem;
+    color: #1976d2;
+  }
+  
+  /* botão de apagar */
+  .clear-btn {
+    margin-top: 8px;
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    border: none;
+    background-color: #e53935;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .clear-btn:hover {
+    background-color: #d32f2f;
+  }
+  </style>
   
 
