@@ -291,83 +291,81 @@ onBeforeUnmount(() => {
   
   <style scoped>
   .textarea-wrapper {
-    position: relative;
-    font-family: Roboto, sans-serif;
-    width: 100%;
-    max-width: 600px;
-  }
-  
-  /* label flutuante */
-  .textarea-label {
-    position: absolute;
-    top: 10px;
-    left: 14px;
-    background: white;
-    padding: 0 4px;
-    color: #6b6b6b;
-    font-size: 0.9rem;
-    transition: all 0.2s ease;
-    pointer-events: none;
-  }
-  
-  /* área editável */
-  .custom-textarea {
-    width: 100%;
-    min-height: 120px;
-    padding: 24px 14px 8px 14px;
-    border: 1px solid #bdbdbd;
-    border-radius: 8px;
-    font-size: 1rem;
-    line-height: 1.5;
-    background-color: white;
-    outline: none;
-    resize: none;
-    overflow-y: auto;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  }
-  
-  /* quando focado */
-  .custom-textarea:focus {
-    border-color: #1976d2;
-    box-shadow: 0 0 0 1px #1976d2;
-  }
-  
-  /* label sobe quando há texto ou foco */
-  .custom-textarea:focus + .textarea-label,
-  .textarea-wrapper:has(.custom-textarea:not(:empty)) .textarea-label {
-    top: -8px;
-    left: 10px;
-    font-size: 0.75rem;
-    color: #1976d2;
-  }
-  
-  /* botão de apagar */
-  .clear-btn {
-    margin-top: 8px;
-    padding: 6px 12px;
-    font-size: 0.9rem;
-    border: none;
-    background-color: #e53935;
-    color: white;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  
-  .clear-btn:hover {
-    background-color: #d32f2f;
-  }
+  position: relative;
+  font-family: Roboto, sans-serif;
+  width: 100%;
+  max-width: 600px;
+}
 
-  .label-row {
+/* container do label + botão */
+.label-row {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  right: 14px;
   display: flex;
   justify-content: space-between; /* label à esquerda, botão à direita */
   align-items: center;
-  position: absolute;
-  top: 10px;
-  left: 0;
-  right: 0;
-  padding: 0 14px; /* mesmo padding do textarea */
-  pointer-events: none; /* label não bloqueia clique */
+  pointer-events: none; /* permite clicar no textarea por trás */
 }
+
+/* label flutuante */
+.textarea-label {
+  background: white;
+  padding: 0 4px;
+  color: #6b6b6b;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  pointer-events: auto; /* label clicável */
+}
+
+/* botão de apagar */
+.clear-btn {
+  pointer-events: auto; /* botão clicável */
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  border: none;
+  background-color: #e53935;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.clear-btn:hover {
+  background-color: #d32f2f;
+}
+
+/* textarea */
+.custom-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 24px 14px 8px 14px;
+  border: 1px solid #bdbdbd;
+  border-radius: 8px;
+  font-size: 1rem;
+  line-height: 1.5;
+  background-color: white;
+  outline: none;
+  resize: none;
+  overflow-y: auto;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* quando focado */
+.custom-textarea:focus {
+  border-color: #1976d2;
+  box-shadow: 0 0 0 1px #1976d2;
+}
+
+/* label sobe quando há foco ou texto */
+.custom-textarea:focus + .label-row .textarea-label,
+.textarea-wrapper:has(.custom-textarea:not(:empty)) .textarea-label {
+  top: -8px;
+  font-size: 0.75rem;
+  color: #1976d2;
+}
+
   </style>
   
 
