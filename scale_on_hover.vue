@@ -25,6 +25,13 @@ function efeitoClique(event: MouseEvent) {
     btn.classList.add('clicado')
     setTimeout(() => btn.classList.remove('clicado'), 300) // remove o brilho após 300ms
 }
+
+function limparSelecao() {
+  const selecao = window.getSelection()
+  if (selecao) {
+    selecao.removeAllRanges() // ← remove qualquer seleção ativa
+  }
+}
 </script>
 
 <style scoped>
