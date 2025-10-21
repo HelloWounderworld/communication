@@ -1,37 +1,56 @@
 <template>
     <div class="btn-container">
-        <!-- gera 5 botões a partir da lista -->
-        <button v-for="(texto, index) in botoes" :key="index" class="test-btn" @click="efeitoClique($event)">
+        <button v-for="(texto, index) in botoes" :key="index" class="test-btn" :class="{ ativo: botaoAtivo === index }"
+            @click="toggleBotao(index, $event)">
             {{ texto }}
         </button>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 
-// lista com 5 textos diferentes
-const botoes = ref<string[]>([
-    'Primeiro',
-    'Segundo',
-    'Terceiro',
-    'Quarto',
-    'Quinto'
-])
+// lista de botões
+const botoes = ref<string[]>(['Primeiro', 'Segundo', 'Terceiro', 'Quarto', 'Quinto'])
 
-// adiciona a classe "clicado" por um curto tempo para o efeito de brilho
-function efeitoClique(event: MouseEvent) {
-    const btn = event.currentTarget as HTMLButtonElement
-    btn.classList.add('clicado')
-    setTimeout(() => btn.classList.remove('clicado'), 300) // remove o brilho após 300ms
+// índice do botão ativo (ou null se nenhum estiver ativo)
+const botaoAtivo = ref<number | null>(null)
+
+// alterna o estado do botão clicado
+function toggleBotao(index: number, event: MouseEvent) {
+    if (botaoAtivo.value === index) {
+        // se clicar no mesmo botão → desliga
+        botaoAtivo.value = null
+    } else {
+        // se clicar em outro botão → ativa o novo e desativa o anterior
+        botaoAtivo.value = index
+    }
+
+    // limpa qualquer seleção de texto ativa
+    limparSelecao()
 }
 
+// função que limpa seleção de texto (caso o usuário selecione algo)
 function limparSelecao() {
-  const selecao = window.getSelection()
-  if (selecao) {
-    selecao.removeAllRanges() // ← remove qualquer seleção ativa
-  }
+    const selecao = window.getSelection()
+    if (selecao) selecao.removeAllRanges()
 }
+
+// quando o usuário seleciona texto → desativa o botão ativo
+function handleTextSelection() {
+    const selecao = window.getSelection()
+    if (selecao && selecao.toString().trim().length > 0) {
+        botaoAtivo.value = null
+    }
+}
+
+// adiciona e remove o listener global
+onMounted(() => {
+    document.addEventListener('mouseup', handleTextSelection)
+})
+onBeforeUnmount(() => {
+    document.removeEventListener('mouseup', handleTextSelection)
+})
 </script>
 
 <style scoped>
@@ -39,7 +58,6 @@ function limparSelecao() {
     display: flex;
     justify-content: center;
     gap: 1.5rem;
-    /* espaçamento entre os botões */
     margin-top: 50px;
     flex-wrap: wrap;
 }
@@ -55,7 +73,7 @@ button.test-btn {
     border-radius: 8px;
 }
 
-/* efeito de hover */
+/* hover */
 button.test-btn:hover {
     cursor: pointer;
     transform: scale(1.15);
@@ -64,8 +82,16 @@ button.test-btn:hover {
     box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }
 
-/* efeito de clique — brilho momentâneo */
-button.test-btn.clicado {
+/* estado ativo (ON) */
+button.test-btn.ativo {
+    background: #00bcd4;
+    color: #000;
+    box-shadow: 0 0 15px rgba(0, 188, 212, 0.8);
+    transform: scale(1.1);
+}
+
+/* efeito de clique (brilho momentâneo) */
+button.test-btn:active {
     animation: brilho 0.3s ease-out;
 }
 
@@ -73,26 +99,20 @@ button.test-btn.clicado {
 @keyframes brilho {
     0% {
         box-shadow: 0 0 0px rgba(255, 255, 255, 0);
-        background: #fff;
-        color: #000;
-        transform: scale(1.1);
+        transform: scale(1.05);
     }
 
     50% {
         box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
-        background: #fff;
-        color: #000;
     }
 
     100% {
         box-shadow: 0 0 0px rgba(255, 255, 255, 0);
-        background: transparent;
-        color: #fff;
         transform: scale(1);
     }
 }
 
-/* fundo da página escuro (para o contraste) */
+/* fundo escuro */
 :host {
     background-color: #111;
     min-height: 100vh;
