@@ -1,159 +1,151 @@
 <template>
-    <div class="btn-container">
-        <button v-for="(texto, index) in botoes" :key="index" class="test-btn" :class="{ ativo: botaoAtivo === index }"
-            @click="toggleBotao(index, $event)">
-            {{ texto }}
-        </button>
+    <div class="editor-container">
+        <label class="editor-label">
+            Digite e selecione (limite: {{ LIMITE_SELECAO }} caracteres)
+        </label>
+
+        <div ref="editorRef" class="custom-editor" contenteditable="true" @input="handleInput"
+            @mouseup="handleTextSelection"></div>
+
+        <!-- só para mostrar o estado do botão ativo -->
+        <div class="status">
+            Botão ativo: <b>{{ botaoAtivo !== null ? botoes[botaoAtivo] : 'nenhum' }}</b>
+        </div>
+
+        <div class="btn-container">
+            <button v-for="(texto, index) in botoes" :key="index" class="test-btn"
+                :class="{ ativo: botaoAtivo === index }" @click="toggleBotao(index)">
+                {{ texto }}
+            </button>
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted } from 'vue'
 
-// lista de botões
+// conteúdo e referência
+const texto = ref<string>('Aqui você pode digitar e selecionar texto livremente.')
+const editorRef = ref<HTMLDivElement | null>(null)
+
+// lista de botões e controle de ativo
 const botoes = ref<string[]>(['Primeiro', 'Segundo', 'Terceiro', 'Quarto', 'Quinto'])
 const botaoAtivo = ref<number | null>(null)
 
-// limite máximo de caracteres permitidos na seleção
-const LIMITE_SELECAO = 20
+// limite de caracteres
+const LIMITE_SELECAO = 50
 
-function toggleBotao(index: number, event: MouseEvent) {
+// alterna o estado do botão
+function toggleBotao(index: number) {
     botaoAtivo.value = botaoAtivo.value === index ? null : index
-    limparSelecao()
 }
 
-// limpa a seleção de texto
-function limparSelecao() {
-    const selecao = window.getSelection()
-    if (selecao) selecao.removeAllRanges()
-}
+// 🔹 desativa botão ativo se o usuário alterar o texto
+function handleInput(event: Event) {
+    const el = event.target as HTMLDivElement
+    if (!el) return
 
-// 🔹 mantém o nome original, mas agora impõe limite à seleção
-function handleTextSelection() {
-    const selecao = window.getSelection()
-    if (!selecao || selecao.rangeCount === 0) return
-
-    const textoSelecionado = selecao.toString().trim()
-    if (textoSelecionado.length === 0) return
-
-    // Se a seleção for menor ou igual ao limite, nada muda
-    if (textoSelecionado.length <= LIMITE_SELECAO) {
-        // mas, se houver uma seleção válida (mesmo pequena), desativa o botão ativo
-        botaoAtivo.value = null
-        return
+    if (el.innerText.length > LIMITE_SELECAO) {
+        el.innerText = el.innerText.slice(0, LIMITE_SELECAO)
     }
 
-    // Se a seleção ultrapassar o limite, cortamos visualmente no ponto certo
-    const rangeOriginal = selecao.getRangeAt(0)
-    const inicio = rangeOriginal.startContainer
-    const offsetInicial = rangeOriginal.startOffset
-    const novoRange = document.createRange()
-
-    // percorre nós de texto até atingir o limite de caracteres
-    let contador = 0
-    let node: Node | null = inicio
-
-    while (node && contador < LIMITE_SELECAO) {
-        if (node.nodeType === Node.TEXT_NODE) {
-            const textoNode = node.textContent || ''
-            const restante = LIMITE_SELECAO - contador
-
-            if (textoNode.length > restante) {
-                novoRange.setStart(inicio, offsetInicial)
-                novoRange.setEnd(node, restante)
-                contador = LIMITE_SELECAO
-                break
-            } else {
-                contador += textoNode.length
-            }
-        }
-
-        node = getNextNode(node)
-    }
-
-    // aplica a nova seleção limitada visualmente
-    selecao.removeAllRanges()
-    selecao.addRange(novoRange)
+    texto.value = el.innerText
 
     // desativa o botão ativo
     botaoAtivo.value = null
 }
 
-// percorre o DOM para achar o próximo nó de texto
-function getNextNode(node: Node): Node | null {
-    if (node.firstChild) return node.firstChild
-    while (node && !node.nextSibling) node = node.parentNode as Node
-    return node?.nextSibling || null
+// 🔹 limita a seleção de texto
+function handleTextSelection() {
+    const selecao = window.getSelection()
+    if (!selecao || selecao.rangeCount === 0) return
+
+    const textoSelecionado = selecao.toString()
+    if (textoSelecionado.length === 0) return
+
+    if (textoSelecionado.length > LIMITE_SELECAO) {
+        const textoLimitado = textoSelecionado.slice(0, LIMITE_SELECAO)
+        console.log('Texto selecionado limitado:', textoLimitado)
+    }
+
+    // também desativa o botão ativo ao selecionar algo
+    botaoAtivo.value = null
 }
 
-// listeners globais
+// inicializa o texto no editor
 onMounted(() => {
-    document.addEventListener('mouseup', handleTextSelection)
-})
-onBeforeUnmount(() => {
-    document.removeEventListener('mouseup', handleTextSelection)
+    if (editorRef.value) {
+        editorRef.value.innerText = texto.value
+    }
 })
 </script>
 
 <style scoped>
+.editor-container {
+    font-family: 'Roboto', sans-serif;
+    max-width: 600px;
+    margin: 40px auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.editor-label {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.custom-editor {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 12px;
+    min-height: 100px;
+    font-size: 1rem;
+    line-height: 1.5;
+    outline: none;
+    background: white;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.custom-editor:focus {
+    border-color: #1976d2;
+    box-shadow: 0 0 0 1px #1976d2;
+}
+
+/* Botões */
 .btn-container {
     display: flex;
     justify-content: center;
-    gap: 1.5rem;
-    margin-top: 50px;
+    gap: 1rem;
     flex-wrap: wrap;
 }
 
 button.test-btn {
-    font-size: 18px;
-    padding: 15px 25px;
-    border: 2px solid #fff;
-    color: #fff;
+    font-size: 16px;
+    padding: 12px 20px;
+    border: 2px solid #444;
+    color: #444;
     background: transparent;
-    transition: transform 0.2s ease-in-out, background 0.2s, color 0.2s, box-shadow 0.2s;
-    border-radius: 8px;
+    border-radius: 6px;
+    transition: all 0.2s ease-in-out;
 }
 
 button.test-btn:hover {
-    cursor: pointer;
-    transform: scale(1.15);
-    background: #fff;
-    color: #000;
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    background: #444;
+    color: white;
+    transform: scale(1.05);
 }
 
 button.test-btn.ativo {
     background: #00bcd4;
     color: #000;
-    box-shadow: 0 0 15px rgba(0, 188, 212, 0.8);
-    transform: scale(1.1);
+    box-shadow: 0 0 10px rgba(0, 188, 212, 0.8);
 }
 
-button.test-btn:active {
-    animation: brilho 0.3s ease-out;
-}
-
-@keyframes brilho {
-    0% {
-        box-shadow: 0 0 0px rgba(255, 255, 255, 0);
-        transform: scale(1.05);
-    }
-
-    50% {
-        box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
-    }
-
-    100% {
-        box-shadow: 0 0 0px rgba(255, 255, 255, 0);
-        transform: scale(1);
-    }
-}
-
-:host {
-    background-color: #111;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.status {
+    font-size: 0.9rem;
+    text-align: center;
+    color: #555;
 }
 </style>
