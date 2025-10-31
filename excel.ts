@@ -1,22 +1,11 @@
+// src/utils/excelProcessor.ts
 import * as XLSX from "xlsx"
-import * as fs from "fs"
-import * as path from "path"
 
-const caminho = path.resolve(__dirname, "../dados.xlsx")
-console.log("📂 Tentando ler:", caminho)
-
-try {
-  fs.accessSync(caminho, fs.constants.R_OK)
-  console.log("✅ Arquivo encontrado e legível!")
-} catch {
-  console.error("❌ Arquivo não encontrado ou sem permissão!")
-}
-
-interface LinhaExcel {
+export interface LinhaExcel {
   [coluna: string]: string | number
 }
 
-interface Par {
+export interface Par {
   base: string | number
   combinado: string | number
 }
@@ -24,7 +13,7 @@ interface Par {
 /**
  * Embaralha um array (Fisher–Yates)
  */
-function embaralhar<T>(array: T[]): T[] {
+export function embaralhar<T>(array: T[]): T[] {
   const arr = [...array]
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
@@ -34,67 +23,48 @@ function embaralhar<T>(array: T[]): T[] {
 }
 
 /**
- * Lê o Excel e retorna o conteúdo da aba "Sheet1" no formato JSON
+ * Converte um ArrayBuffer de Excel em JSON
  */
-function lerExcelComoJson(caminho: string): LinhaExcel[] {
-  const workbook = XLSX.readFile(caminho)
+export function lerExcelComoJson(arrayBuffer: ArrayBuffer): LinhaExcel[] {
+  const bytes = new Uint8Array(arrayBuffer)
+  const workbook = XLSX.read(bytes, { type: "array" })
+  const sheet = workbook.Sheets["Sheet1"]
 
-  const sheetName = "Sheet1"
-
-  // Verifica se a aba existe
-  if (!workbook.Sheets[sheetName]) {
-    throw new Error(`❌ A aba "${sheetName}" não foi encontrada no arquivo Excel.`)
+  if (!sheet) {
+    throw new Error('❌ A aba "Sheet1" não foi encontrada.')
   }
 
-  const worksheet = workbook.Sheets[sheetName]
-  return XLSX.utils.sheet_to_json<LinhaExcel>(worksheet)
+  return XLSX.utils.sheet_to_json<LinhaExcel>(sheet)
 }
 
 /**
- * Gera pares (0,1), (0,2), (0,3) embaralhados para cada linha do Excel
+ * Gera pares embaralhados a partir das linhas do Excel
  */
-function gerarPares(dados: LinhaExcel[]): Par[] {
+export function gerarPares(dados: LinhaExcel[]): Par[] {
   const todosPares: Par[] = []
 
-  // Ignora a primeira linha (cabeçalho)
   dados.slice(1).forEach((linha) => {
     const valores = Object.values(linha)
     const base = valores[0]
     const outros = valores.slice(1)
-
-    // Cria pares (0,1), (0,2), (0,3)
     const pares = outros.map((v) => ({ base, combinado: v }))
-
-    // Embaralha os pares dessa linha
-    const paresEmbaralhados = embaralhar(pares)
-    todosPares.push(...paresEmbaralhados)
+    todosPares.push(...embaralhar(pares))
   })
 
-  // Embaralha todos os pares finais
   return embaralhar(todosPares)
 }
 
 /**
- * Função principal
+ * Cria e baixa um arquivo JSON no navegador
  */
-function main() {
-  const caminhoArquivo = "./dados.xlsx"
-
-  // 1️⃣ Lê o Excel (somente a aba "Sheet1")
-  const dados = lerExcelComoJson(caminhoArquivo)
-
-  // 2️⃣ Guarda formato original
-  const backupOriginal = JSON.parse(JSON.stringify(dados))
-  fs.writeFileSync("./backup_original.json", JSON.stringify(backupOriginal, null, 2))
-
-  // 3️⃣ Gera pares embaralhados
-  const paresGerados = gerarPares(dados)
-
-  // 4️⃣ Salva resultado
-  fs.writeFileSync("./pares_gerados.json", JSON.stringify(paresGerados, null, 2))
-
-  console.log("✅ Processo concluído!")
-  console.log(`📄 Total de pares gerados: ${paresGerados.length}`)
+export function baixarJSON(dados: unknown, nome: string) {
+  const blob = new Blob([JSON.stringify(dados, null, 2)], {
+    type: "application/json",
+  })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.download = nome
+  link.click()
+  URL.revokeObjectURL(url)
 }
-
-main()
