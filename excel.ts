@@ -1,5 +1,5 @@
 // src/utils/excelProcessor.ts
-import * as XLSX from 'xlsx';
+import * as XLSX from "xlsx";
 
 export interface LinhaExcel {
   [coluna: string]: string | number;
@@ -28,16 +28,25 @@ export function embaralhar<T>(array: T[]): T[] {
 }
 
 /**
- * Lê o Excel do sistema de arquivos (usando window.fs)
+ * Busca e lê o arquivo Excel da pasta public
  */
-export async function lerExcelDoSistema(caminhoArquivo: string): Promise<LinhaExcel[]> {
+export async function lerExcelDaPastaPublic(
+  caminhoArquivo: string
+): Promise<LinhaExcel[]> {
   try {
-    // Lê o arquivo usando a API window.fs
-    const dados = await window.fs.readFile(caminhoArquivo);
-    
-    // Converte para workbook
-    const workbook = XLSX.read(dados, { type: 'array' });
-    const sheet = workbook.Sheets['Sheet1'];
+    // Busca o arquivo da pasta public
+    const response = await fetch(caminhoArquivo);
+
+    if (!response.ok) {
+      throw new Error(`Arquivo não encontrado: ${caminhoArquivo}`);
+    }
+
+    // Converte para ArrayBuffer
+    const arrayBuffer = await response.arrayBuffer();
+
+    // Lê o Excel
+    const workbook = XLSX.read(arrayBuffer, { type: "array" });
+    const sheet = workbook.Sheets["Sheet1"];
 
     if (!sheet) {
       throw new Error('❌ A aba "Sheet1" não foi encontrada.');
@@ -45,7 +54,7 @@ export async function lerExcelDoSistema(caminhoArquivo: string): Promise<LinhaEx
 
     return XLSX.utils.sheet_to_json<LinhaExcel>(sheet);
   } catch (erro) {
-    console.error('❌ Erro ao ler Excel:', erro);
+    console.error("❌ Erro ao ler Excel:", erro);
     throw erro;
   }
 }
@@ -72,45 +81,59 @@ export function gerarPares(dados: LinhaExcel[]): Par[] {
  */
 export function baixarJSON(dados: unknown, nomeArquivo: string): void {
   const blob = new Blob([JSON.stringify(dados, null, 2)], {
-    type: 'application/json',
+    type: "application/json",
   });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
+  const link = document.createElement("a");
   link.href = url;
   link.download = nomeArquivo;
+  document.body.appendChild(link);
   link.click();
+  document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
 
 /**
- * Processa o Excel e gera os arquivos JSON automaticamente
+ * Salva JSON usando localStorage (persistência no navegador)
+ */
+export function salvarJSONLocalStorage(chave: string, dados: unknown): void {
+  try {
+    localStorage.setItem(chave, JSON.stringify(dados));
+    console.log(`✅ Salvo em localStorage: ${chave}`);
+  } catch (erro) {
+    console.error("❌ Erro ao salvar no localStorage:", erro);
+  }
+}
+
+/**
+ * Processa o Excel automaticamente ao carregar a página
  */
 export async function processarExcelAutomaticamente(
-  caminhoArquivo: string
+  caminhoArquivo: string = "/dados.xlsx"
 ): Promise<DadosProcessados> {
   try {
-    console.log('📂 Lendo arquivo Excel...');
-    const dados = await lerExcelDoSistema(caminhoArquivo);
-    
-    console.log('🔀 Gerando pares embaralhados...');
+    console.log("📂 Buscando arquivo Excel...");
+    const dados = await lerExcelDaPastaPublic(caminhoArquivo);
+
+    console.log("🔀 Gerando pares embaralhados...");
     const pares = gerarPares(dados);
-    
-    console.log('💾 Salvando JSONs...');
-    
-    // Salva JSON original
-    baixarJSON(dados, 'dados-original.json');
-    
-    // Pequeno delay para não conflitar os downloads
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Salva pares embaralhados
-    baixarJSON(pares, 'pares-embaralhados.json');
-    
-    console.log('✅ Processamento concluído!');
-    
+
+    console.log("💾 Gerando arquivos JSON...");
+
+    // Opção 1: Baixar os arquivos automaticamente
+    baixarJSON(dados, "dados-original.json");
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    baixarJSON(pares, "pares-embaralhados.json");
+
+    // Opção 2: Salvar no localStorage para uso posterior
+    salvarJSONLocalStorage("dados-original", dados);
+    salvarJSONLocalStorage("pares-embaralhados", pares);
+
+    console.log("✅ Processamento concluído!");
+
     return { original: dados, pares };
   } catch (erro) {
-    console.error('❌ Erro no processamento:', erro);
+    console.error("❌ Erro no processamento:", erro);
     throw erro;
   }
 }
