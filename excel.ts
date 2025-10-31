@@ -1,5 +1,16 @@
 import * as XLSX from "xlsx"
 import * as fs from "fs"
+import * as path from "path"
+
+const caminho = path.resolve(__dirname, "../dados.xlsx")
+console.log("📂 Tentando ler:", caminho)
+
+try {
+  fs.accessSync(caminho, fs.constants.R_OK)
+  console.log("✅ Arquivo encontrado e legível!")
+} catch {
+  console.error("❌ Arquivo não encontrado ou sem permissão!")
+}
 
 interface LinhaExcel {
   [coluna: string]: string | number
