@@ -1,242 +1,200 @@
-# backend/main.py
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from typing import List, Dict, Any, Union
+from typing import Any
+from pathlib import Path
 import pandas as pd
 import json
 import random
-from pathlib import Path
 
-app = FastAPI(title="Excel Processor API")
+app = FastAPI(title="Excel Processor API", version="2.0")
 
-# Configurar CORS para permitir requisições do frontend
+# ========================================
+# 🔧 Configurações gerais
+# ========================================
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],  # URLs do frontend
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Caminhos
-FRONTEND_PUBLIC_PATH = Path(__file__).parent.parent / "frontend" / "public"
-EXCEL_PATH = FRONTEND_PUBLIC_PATH / "dados.xlsx"
-JSON_ORIGINAL_PATH = FRONTEND_PUBLIC_PATH / "dados-original.json"
-JSON_PARES_PATH = FRONTEND_PUBLIC_PATH / "pares-embaralhados.json"
+BASE_PATH = Path(__file__).parent
+EXCEL_PATH = BASE_PATH / "dados.xlsx"
+JSON_ORIGINAL_PATH = BASE_PATH / "dados-original.json"
+JSON_PARES_PATH = BASE_PATH / "pares-embaralhados.json"
 
-# Servir arquivos estáticos da pasta public do frontend
-app.mount("/static", StaticFiles(directory=str(FRONTEND_PUBLIC_PATH)), name="static")
+# ========================================
+# ⚙️ Funções auxiliares
+# ========================================
 
-
-# Tipos
-LinhaExcel = Dict[str, Union[str, int, float]]
-
-class Par:
-    def __init__(self, base: Union[str, int, float], combinado: Union[str, int, float]):
-        self.base = base
-        self.combinado = combinado
-    
-    def to_dict(self):
-        return {"base": self.base, "combinado": self.combinado}
-
-
-class DadosProcessados:
-    def __init__(self, original: List[LinhaExcel], pares: List[Par]):
-        self.original = original
-        self.pares = pares
-    
-    def to_dict(self):
-        return {
-            "original": self.original,
-            "pares": [p.to_dict() for p in self.pares]
-        }
-
-
-def embaralhar(array: List[Any]) -> List[Any]:
-    """Embaralha um array (Fisher-Yates)"""
-    arr = array.copy()
-    for i in range(len(arr) - 1, 0, -1):
-        j = random.randint(0, i)
-        arr[i], arr[j] = arr[j], arr[i]
+def embaralhar(lista: list) -> list:
+    arr = lista[:]
+    random.shuffle(arr)
     return arr
 
 
-def ler_excel(caminho_arquivo: Path) -> List[LinhaExcel]:
-    """Lê o arquivo Excel e retorna como lista de dicionários"""
-    try:
-        print(f"📂 Lendo arquivo Excel: {caminho_arquivo}")
-        
-        if not caminho_arquivo.exists():
-            raise FileNotFoundError(f"Arquivo não encontrado: {caminho_arquivo}")
-        
-        # Lê o Excel (primeira aba)
-        df = pd.read_excel(caminho_arquivo, sheet_name="Sheet1")
-        
-        # Converte para lista de dicionários
-        dados = df.to_dict(orient="records")
-        
-        print(f"✅ {len(dados)} linhas lidas do Excel")
-        return dados
-        
-    except Exception as erro:
-        print(f"❌ Erro ao ler Excel: {erro}")
-        raise
+def ler_excel_em_estrutura() -> list[dict]:
+    """Lê o Excel e gera a estrutura do dados-original.json"""
+    if not EXCEL_PATH.exists():
+        raise FileNotFoundError(f"Arquivo Excel não encontrado em: {EXCEL_PATH}")
 
+    df = pd.read_excel(EXCEL_PATH, sheet_name="Sheet1")
+    colunas = df.columns.tolist()
+    registros = []
 
-def gerar_pares(dados: List[LinhaExcel]) -> List[Par]:
-    """Gera pares embaralhados a partir das linhas do Excel"""
-    todos_pares = []
-    
-    # Pula a primeira linha (cabeçalho já foi processado pelo pandas)
-    for linha in dados:
-        valores = list(linha.values())
-        base = valores[0]
-        outros = valores[1:]
-        
-        # Cria pares
-        pares = [Par(base, v) for v in outros if pd.notna(v)]  # Ignora valores NaN
-        todos_pares.extend(embaralhar(pares))
-    
-    print(f"✅ {len(todos_pares)} pares gerados")
-    return embaralhar(todos_pares)
+    for idx, row in df.iloc[1:].iterrows():  # pula a primeira linha
+        texto = row[colunas[0]]
+        titulo1, titulo2, titulo3 = row[colunas[1]], row[colunas[2]], row[colunas[3]]
 
-
-def salvar_json(dados: Any, caminho: Path) -> None:
-    """Salva dados em arquivo JSON"""
-    try:
-        with open(caminho, 'w', encoding='utf-8') as f:
-            json.dump(dados, f, ensure_ascii=False, indent=2)
-        print(f"💾 Salvo: {caminho}")
-    except Exception as erro:
-        print(f"❌ Erro ao salvar JSON: {erro}")
-        raise
-
-
-def processar_excel_e_salvar() -> DadosProcessados:
-    """Processa o Excel e salva os JSONs na pasta public"""
-    try:
-        print("🚀 Iniciando processamento do Excel...")
-        
-        # Lê o Excel
-        dados = ler_excel(EXCEL_PATH)
-        
-        # Gera pares embaralhados
-        print("🔀 Gerando pares embaralhados...")
-        pares = gerar_pares(dados)
-        
-        # Salva JSON original
-        salvar_json(dados, JSON_ORIGINAL_PATH)
-        
-        # Salva pares embaralhados
-        pares_dict = [p.to_dict() for p in pares]
-        salvar_json(pares_dict, JSON_PARES_PATH)
-        
-        print("✅ Processamento concluído!")
-        
-        return DadosProcessados(dados, pares)
-        
-    except Exception as erro:
-        print(f"❌ Erro no processamento: {erro}")
-        raise
-
-
-# Variável global para armazenar dados processados
-dados_processados: DadosProcessados | None = None
-erro_processamento: str | None = None
-
-
-# Processa automaticamente quando o servidor inicia
-@app.on_event("startup")
-async def startup_event():
-    """Processa o Excel quando o servidor inicia"""
-    global dados_processados, erro_processamento
-    try:
-        print("🚀 Servidor iniciando - processando Excel automaticamente...")
-        dados_processados = processar_excel_e_salvar()
-        print("✅ Processamento inicial concluído!")
-    except Exception as erro:
-        erro_processamento = str(erro)
-        print(f"❌ Falha no processamento inicial: {erro_processamento}")
-
-
-# ENDPOINTS
-
-@app.get("/")
-async def root():
-    """Endpoint raiz"""
-    return {
-        "mensagem": "API Excel Processor",
-        "status": "online",
-        "endpoints": {
-            "status": "/api/status",
-            "dados": "/api/dados",
-            "reprocessar": "/api/reprocessar"
+        registro = {
+            "texto": texto,
+            "par1": {
+                "titulo1": titulo1,
+                "linha_em_que_titulo1_se_encontra": int(idx + 2),
+                "coluna_em_que_esse_titulo1_se_encontra": colunas[1],
+            },
+            "par2": {
+                "titulo2": titulo2,
+                "linha_em_que_titulo2_se_encontra": int(idx + 2),
+                "coluna_em_que_esse_titulo2_se_encontra": colunas[2],
+            },
+            "par3": {
+                "titulo3": titulo3,
+                "linha_em_que_titulo3_se_encontra": int(idx + 2),
+                "coluna_em_que_esse_titulo3_se_encontra": colunas[3],
+            },
+            "posicao_atual_index": len(registros),
         }
+
+        registros.append(registro)
+
+    return registros
+
+
+def gerar_pares_estrutura(dados_original: list[dict]) -> list[dict]:
+    """Gera a estrutura embaralhada para pares-embaralhados.json"""
+    pares_total = []
+
+    for linha in dados_original:
+        texto = linha["texto"]
+        pares = [
+            {"texto": texto, "par": linha["par1"], "posicao_atual_index": linha["posicao_atual_index"]},
+            {"texto": texto, "par": linha["par2"], "posicao_atual_index": linha["posicao_atual_index"]},
+            {"texto": texto, "par": linha["par3"], "posicao_atual_index": linha["posicao_atual_index"]},
+        ]
+        pares_total.extend(embaralhar(pares))  # embaralha pares dessa linha
+
+    return embaralhar(pares_total)  # embaralhamento global final
+
+
+def salvar_json(dados: Any, caminho: Path):
+    caminho.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+# ========================================
+# 🧠 Processamento automático ao iniciar
+# ========================================
+
+@app.on_event("startup")
+def inicializar_processamento():
+    """
+    Executado automaticamente no momento em que o FastAPI é iniciado.
+    Cria os arquivos dados-original.json e pares-embaralhados.json
+    apenas se eles ainda não existirem.
+    """
+    try:
+        if JSON_ORIGINAL_PATH.exists() and JSON_PARES_PATH.exists():
+            print("✅ Arquivos JSON já existentes — pulando processamento inicial.")
+            return
+
+        print("🔄 Iniciando processamento automático de dados.xlsx...")
+
+        dados_original = ler_excel_em_estrutura()
+        salvar_json(dados_original, JSON_ORIGINAL_PATH)
+        print(f"📄 Gerado: {JSON_ORIGINAL_PATH.name} ({len(dados_original)} linhas)")
+
+        pares = gerar_pares_estrutura(dados_original)
+        salvar_json(pares, JSON_PARES_PATH)
+        print(f"📄 Gerado: {JSON_PARES_PATH.name} ({len(pares)} pares)")
+
+        print("✅ Processamento inicial concluído com sucesso.")
+
+    except Exception as e:
+        print(f"❌ Erro ao processar dados.xlsx: {e}")
+
+
+# ========================================
+# 🚀 ENDPOINTS
+# ========================================
+
+@app.post("/api/pares")
+def obter_pares():
+    """Retorna o conteúdo atual de pares-embaralhados.json"""
+    try:
+        if not JSON_PARES_PATH.exists():
+            raise FileNotFoundError("O arquivo pares-embaralhados.json ainda não existe.")
+        pares = json.loads(JSON_PARES_PATH.read_text(encoding="utf-8"))
+        return {"sucesso": True, "pares": pares}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/score")
+def atualizar_score(item: dict):
+    """
+    Recebe:
+    {
+      "texto": "...",
+      "par": {...},
+      "score": 1-4,
+      "posicao_atual_index": int
     }
+    Atualiza o dados-original.json na posição correspondente.
+    """
+    try:
+        if not JSON_ORIGINAL_PATH.exists():
+            raise FileNotFoundError("O arquivo dados-original.json não foi encontrado.")
+
+        dados = json.loads(JSON_ORIGINAL_PATH.read_text(encoding="utf-8"))
+
+        index = item.get("posicao_atual_index")
+        if index is None or not (0 <= index < len(dados)):
+            raise ValueError("Índice inválido ou fora do intervalo.")
+
+        score = item.get("score")
+        if not isinstance(score, (int, float)) or not (1 <= score <= 4):
+            raise ValueError("O score deve ser um número entre 1 e 4.")
+
+        # Atualiza o score
+        dados[index]["score"] = score
+        salvar_json(dados, JSON_ORIGINAL_PATH)
+
+        return {
+            "sucesso": True,
+            "mensagem": f"Score atualizado na posição {index}",
+            "atualizado": dados[index],
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/status")
-async def verificar_status():
-    """Verifica o status do processamento"""
-    if erro_processamento:
-        raise HTTPException(status_code=500, detail={
-            "sucesso": False,
-            "erro": erro_processamento
-        })
-    
-    if not dados_processados:
-        raise HTTPException(status_code=500, detail={
-            "sucesso": False,
-            "erro": "Dados não foram processados"
-        })
-    
-    return {
-        "sucesso": True,
-        "totalLinhas": len(dados_processados.original),
-        "totalPares": len(dados_processados.pares),
-        "arquivosGerados": [
-            "/static/dados-original.json",
-            "/static/pares-embaralhados.json"
-        ]
+def status():
+    """Verifica se os arquivos estão prontos e quantas linhas têm."""
+    status = {
+        "xlsx_existe": EXCEL_PATH.exists(),
+        "original_existe": JSON_ORIGINAL_PATH.exists(),
+        "pares_existe": JSON_PARES_PATH.exists(),
     }
 
+    if JSON_ORIGINAL_PATH.exists():
+        dados = json.loads(JSON_ORIGINAL_PATH.read_text(encoding="utf-8"))
+        status["linhas_original"] = len(dados)
 
-@app.get("/api/dados")
-async def obter_dados():
-    """Retorna os dados processados"""
-    if not dados_processados:
-        raise HTTPException(status_code=500, detail={
-            "erro": "Dados não foram processados"
-        })
-    
-    return dados_processados.to_dict()
+    if JSON_PARES_PATH.exists():
+        pares = json.loads(JSON_PARES_PATH.read_text(encoding="utf-8"))
+        status["total_pares"] = len(pares)
 
-
-@app.post("/api/reprocessar")
-async def reprocessar():
-    """Reprocessa o Excel e gera novos JSONs"""
-    global dados_processados, erro_processamento
-    
-    try:
-        print("🔄 Reprocessando...")
-        dados_processados = processar_excel_e_salvar()
-        erro_processamento = None
-        
-        return {
-            "sucesso": True,
-            "mensagem": "Reprocessado com sucesso",
-            "totalLinhas": len(dados_processados.original),
-            "totalPares": len(dados_processados.pares)
-        }
-    except Exception as erro:
-        erro_processamento = str(erro)
-        raise HTTPException(status_code=500, detail={
-            "sucesso": False,
-            "erro": erro_processamento
-        })
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    return status
