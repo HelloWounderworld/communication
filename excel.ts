@@ -11,7 +11,7 @@ interface Par {
 }
 
 /**
- * Embaralha um array in-place (Fisher–Yates)
+ * Embaralha um array (Fisher–Yates)
  */
 function embaralhar<T>(array: T[]): T[] {
   const arr = [...array]
@@ -23,11 +23,18 @@ function embaralhar<T>(array: T[]): T[] {
 }
 
 /**
- * Lê um arquivo Excel e retorna o conteúdo no formato JSON
+ * Lê o Excel e retorna o conteúdo da aba "Sheet1" no formato JSON
  */
 function lerExcelComoJson(caminho: string): LinhaExcel[] {
   const workbook = XLSX.readFile(caminho)
-  const sheetName = workbook.SheetNames[0]
+
+  const sheetName = "Sheet1"
+
+  // Verifica se a aba existe
+  if (!workbook.Sheets[sheetName]) {
+    throw new Error(`❌ A aba "${sheetName}" não foi encontrada no arquivo Excel.`)
+  }
+
   const worksheet = workbook.Sheets[sheetName]
   return XLSX.utils.sheet_to_json<LinhaExcel>(worksheet)
 }
@@ -49,11 +56,10 @@ function gerarPares(dados: LinhaExcel[]): Par[] {
 
     // Embaralha os pares dessa linha
     const paresEmbaralhados = embaralhar(pares)
-
     todosPares.push(...paresEmbaralhados)
   })
 
-  // Embaralha todos os pares gerados
+  // Embaralha todos os pares finais
   return embaralhar(todosPares)
 }
 
@@ -63,21 +69,21 @@ function gerarPares(dados: LinhaExcel[]): Par[] {
 function main() {
   const caminhoArquivo = "./dados.xlsx"
 
-  // 1️⃣ Lê o Excel
+  // 1️⃣ Lê o Excel (somente a aba "Sheet1")
   const dados = lerExcelComoJson(caminhoArquivo)
 
   // 2️⃣ Guarda formato original
   const backupOriginal = JSON.parse(JSON.stringify(dados))
   fs.writeFileSync("./backup_original.json", JSON.stringify(backupOriginal, null, 2))
 
-  // 3️⃣ Gera os pares embaralhados
+  // 3️⃣ Gera pares embaralhados
   const paresGerados = gerarPares(dados)
 
-  // 4️⃣ Salva resultado final
+  // 4️⃣ Salva resultado
   fs.writeFileSync("./pares_gerados.json", JSON.stringify(paresGerados, null, 2))
 
   console.log("✅ Processo concluído!")
-  console.log(`Total de pares gerados: ${paresGerados.length}`)
+  console.log(`📄 Total de pares gerados: ${paresGerados.length}`)
 }
 
 main()
