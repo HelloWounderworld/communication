@@ -24,6 +24,7 @@ XLSX = BASE / "dados.xlsx"
 USERS = BASE / "users"
 USERS.mkdir(exist_ok=True)
 
+
 # ==========================
 # 🔧 Utils
 # ==========================
@@ -32,13 +33,16 @@ def shuffle(lst: list) -> list:
     random.shuffle(arr)
     return arr
 
+
 def save_json(data: Any, path: Path):
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
 
 def read_json(path: Path):
     if not path.exists():
         raise FileNotFoundError(f"Arquivo não encontrado: {path}")
     return json.loads(path.read_text(encoding="utf-8"))
+
 
 def read_excel() -> list[dict]:
     if not XLSX.exists():
@@ -49,14 +53,17 @@ def read_excel() -> list[dict]:
     for i, row in df.iloc[1:].iterrows():
         txt = row[cols[0]]
         t1, t2, t3 = row[cols[1]], row[cols[2]], row[cols[3]]
-        data.append({
-            "txt": txt,
-            "p1": {"t": t1, "l": int(i + 2), "c": cols[1]},
-            "p2": {"t": t2, "l": int(i + 2), "c": cols[2]},
-            "p3": {"t": t3, "l": int(i + 2), "c": cols[3]},
-            "idx": len(data)
-        })
+        data.append(
+            {
+                "txt": txt,
+                "p1": {"t": t1, "l": int(i + 2), "c": cols[1]},
+                "p2": {"t": t2, "l": int(i + 2), "c": cols[2]},
+                "p3": {"t": t3, "l": int(i + 2), "c": cols[3]},
+                "idx": len(data),
+            }
+        )
     return data
+
 
 def make_pairs(data: list[dict]) -> dict[str, list[dict]]:
     rows = shuffle(data)
@@ -69,9 +76,12 @@ def make_pairs(data: list[dict]) -> dict[str, list[dict]]:
             {"txt": txt, "p": row["p3"], "idx": row["idx"]},
         ]
         ps = shuffle(ps)
-        l1.append(ps[0]); l2.append(ps[1]); l3.append(ps[2])
+        l1.append(ps[0])
+        l2.append(ps[1])
+        l3.append(ps[2])
     all_pairs = l1 + l2 + l3
     return {"l1": l1, "l2": l2, "l3": l3, "all": all_pairs}
+
 
 def last_scored(path: Path) -> int:
     js = read_json(path).get("all", [])
@@ -81,6 +91,7 @@ def last_scored(path: Path) -> int:
             last = i
     return last + 1 if last + 1 < len(js) else len(js)
 
+
 def check_pass(udir: Path, p: str):
     spath = udir / "senha.txt"
     if not spath.exists():
@@ -88,6 +99,7 @@ def check_pass(udir: Path, p: str):
     saved = spath.read_text(encoding="utf-8").strip()
     if saved != p:
         raise HTTPException(status_code=403, detail="Senha incorreta.")
+
 
 # ==========================
 # 🚀 Endpoints
@@ -126,6 +138,7 @@ def create_or_check_user(b: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/api/pairs")
 def get_pairs(b: dict):
     """
@@ -148,16 +161,18 @@ def get_pairs(b: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/api/score")
 def update_score(b: dict):
     """
-    Atualiza score para o usuário autenticado.
+    Atualiza score e comentário diretamente no respectivo par (p1, p2 ou p3)
+    dentro de orig.json e pairs.json.
     body = {
         "u": "nome",
         "pw": "senha",
-        "idx": 2,
-        "p_idx": 120,
-        "s": 4,
+        "idx": 2,          # índice do texto em orig.json
+        "p_idx": 120,      # índice do par em pairs.json
+        "s": 4,            # score
         "c": "Comentário explicando a escolha"
     }
     """
@@ -167,8 +182,9 @@ def update_score(b: dict):
         i_orig = b.get("idx")
         i_pair = b.get("p_idx")
         s = b.get("s")
-        c = b.get("c")  # ← novo campo: comentário
+        c = b.get("c")
 
+        # 🔒 Validações básicas
         if not u or not pw:
             raise ValueError("Campos 'u' e 'pw' são obrigatórios.")
         if not isinstance(s, (int, float)) or not (1 <= s <= 4):
@@ -176,33 +192,60 @@ def update_score(b: dict):
         if not c or not c.strip():
             raise ValueError("Comentário ('c') é obrigatório.")
 
+        # 🔐 Valida senha
         udir = USERS / u
         check_pass(udir, pw)
 
-        orig = udir / "orig.json"
-        pairs = udir / "pairs.json"
-        data = read_json(orig)
-        ps = read_json(pairs)
+        orig_path = udir / "orig.json"
+        pairs_path = udir / "pairs.json"
+
+        data = read_json(orig_path)
+        ps = read_json(pairs_path)
         all_ps = ps.get("all", [])
 
-        # Atualiza o original
-        if 0 <= i_orig < len(data):
-            data[i_orig]["s"] = s
-            data[i_orig]["c"] = c
-
-        # Atualiza o par correspondente
+        # ======================================================
+        # 🧩 Atualiza o pairs.json
+        # ======================================================
         if 0 <= i_pair < len(all_ps):
             all_ps[i_pair]["s"] = s
             all_ps[i_pair]["c"] = c
+            par_titulo = all_ps[i_pair]["p"]["t"]
+        else:
+            raise ValueError(f"Índice de par inválido: {i_pair}")
 
-        save_json(data, orig)
-        save_json(ps, pairs)
+        # ======================================================
+        # 🧩 Atualiza o orig.json
+        # ======================================================
+        if 0 <= i_orig < len(data):
+            item = data[i_orig]
+            atualizou = False
+
+            # Verifica se o título do par corresponde a p1, p2 ou p3
+            for key in ["p1", "p2", "p3"]:
+                if key in item and item[key]["t"] == par_titulo:
+                    item[key]["s"] = s
+                    item[key]["comment"] = c
+                    atualizou = True
+                    break
+
+            if not atualizou:
+                raise ValueError(
+                    f"Não foi possível associar o par '{par_titulo}' ao texto idx={i_orig}."
+                )
+        else:
+            raise ValueError(f"Índice do texto inválido: {i_orig}")
+
+        # ======================================================
+        # 💾 Salva alterações
+        # ======================================================
+        save_json(data, orig_path)
+        save_json(ps, pairs_path)
 
         return {
             "ok": True,
-            "msg": f"Score salvo ({i_orig}, {i_pair})",
+            "msg": f"Score salvo em '{par_titulo}' (orig idx={i_orig}, pair idx={i_pair})",
             "comment": c,
-            "next": i_pair + 1 if i_pair + 1 < len(all_ps) else None
+            "next": i_pair + 1 if i_pair + 1 < len(all_ps) else None,
         }
 
     except Exception as e:
