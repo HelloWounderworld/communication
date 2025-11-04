@@ -1,51 +1,70 @@
 // frontend/src/utils/api.ts
-import axios from "axios"
+import axios from "axios";
 
 // ==========================
-// ⚙️ Configuração base da API
+// ⚙️ Configuração base
 // ==========================
 
-// 👉 Ajuste conforme o endereço onde roda seu backend FastAPI
-const API_BASE = "http://127.0.0.1:8000/api"
+// 👉 Altere se o backend estiver em outro endereço
+const API_BASE = "http://127.0.0.1:8000/api";
 
 // ==========================
 // 🧩 Tipos auxiliares
 // ==========================
 
 export interface Par {
-  txt: string
-  p: { t: string; l: number; c: string }
-  idx: number
-  s?: number
+  txt: string;
+  p: { t: string; l: number; c: string };
+  idx: number;
+  s?: number;
+  c?: string;
 }
 
-export interface ParesData {
-  l1: Par[]
-  l2: Par[]
-  l3: Par[]
-  all: Par[]
+export interface ParesResponse {
+  ok: boolean;
+  u: string;
+  pairs: { l1: Par[]; l2: Par[]; l3: Par[]; all: Par[] };
+  next: number;
 }
 
 export interface UserSession {
-  user: string
-  pass: string
-  nextIndex: number
+  user: string;
+  pass: string;
+  nextIndex: number;
 }
 
 // ==========================
-// 📦 Armazenamento local
+// 💾 Sessão local
 // ==========================
+
 export function saveSession(session: UserSession) {
-  localStorage.setItem("session", JSON.stringify(session))
+  localStorage.setItem("session", JSON.stringify(session));
+  updateLastActivity();
 }
 
 export function loadSession(): UserSession | null {
-  const data = localStorage.getItem("session")
-  return data ? JSON.parse(data) : null
+  const s = localStorage.getItem("session");
+  return s ? JSON.parse(s) : null;
 }
 
 export function clearSession() {
-  localStorage.removeItem("session")
+  localStorage.removeItem("session");
+  localStorage.removeItem("lastActivity");
+}
+
+export function updateLastActivity() {
+  localStorage.setItem("lastActivity", String(Date.now()));
+}
+
+export function isSessionValid(timeoutMinutes = 20): boolean {
+  const last = localStorage.getItem("lastActivity");
+  if (!last) return false;
+  const diff = (Date.now() - Number(last)) / 1000 / 60;
+  return diff < timeoutMinutes;
+}
+
+export function logoutUser() {
+  clearSession();
 }
 
 // ==========================
@@ -53,64 +72,36 @@ export function clearSession() {
 // ==========================
 
 /**
- * Faz login ou cria usuário.
- * Se o usuário já existir, retorna o progresso atual.
+ * Login / criação de usuário.
+ * Se o usuário existir, retorna progresso atual.
  */
-export async function loginUser(user: string, pass: string) {
-  const { data } = await axios.post(`${API_BASE}/user`, { u: user, p: pass })
-  if (!data.ok) throw new Error("Falha ao autenticar usuário.")
-  saveSession({ user, pass, nextIndex: data.next || 0 })
-  return data
+export async function loginUser(u: string, pw: string) {
+  const { data } = await axios.post(`${API_BASE}/user`, { u, p: pw });
+  if (!data.ok) throw new Error(data.detail || "Falha ao autenticar usuário.");
+  return data;
 }
 
 /**
- * Busca pares embaralhados do usuário logado.
+ * Busca os pares embaralhados do usuário.
  */
-export async function fetchPairs(user: string) {
-  const { data } = await axios.post(`${API_BASE}/pairs`, { u: user })
-  if (!data.ok) throw new Error("Falha ao carregar pares.")
-  return data as { ok: boolean; u: string; pairs: ParesData; next: number }
+export async function fetchPairs(u: string) {
+  const { data } = await axios.post(`${API_BASE}/pairs`, { u });
+  if (!data.ok) throw new Error(data.detail || "Falha ao carregar pares.");
+  return data as ParesResponse;
 }
 
 /**
- * Envia a pontuação do usuário para o backend.
+ * Envia score + comentário obrigatório.
  */
-export async function sendScore(
-  user: string,
-  idx: number,
-  p_idx: number,
-  score: number
-) {
-  const { data } = await axios.post(`${API_BASE}/score`, {
-    u: user,
-    idx,
-    p_idx,
-    s: score,
-  })
-  if (!data.ok) throw new Error("Falha ao salvar pontuação.")
-  return data
-}
-
-/**
- * Realiza logout (apaga sessão local)
- */
-export function logoutUser() {
-  clearSession()
-}
-
-/**
- * Verifica se há sessão ativa e se não expirou
- */
-export function isSessionValid(timeoutMinutes = 20): boolean {
-  const lastActivity = localStorage.getItem("lastActivity")
-  const now = Date.now()
-
-  if (!lastActivity) return false
-
-  const diffMinutes = (now - Number(lastActivity)) / 1000 / 60
-  return diffMinutes < timeoutMinutes
-}
-
-export function updateLastActivity() {
-  localStorage.setItem("lastActivity", String(Date.now()))
+export async function sendScore(body: {
+  u: string;
+  pw: string;
+  idx: number;
+  p_idx: number;
+  s: number;
+  c: string;
+}) {
+  const { data } = await axios.post(`${API_BASE}/score`, body);
+  if (!data.ok) throw new Error(data.detail || "Erro ao salvar score.");
+  return data;
 }

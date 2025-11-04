@@ -152,7 +152,14 @@ def get_pairs(b: dict):
 def update_score(b: dict):
     """
     Atualiza score para o usuário autenticado.
-    body = { "u": "nome", "pw": "senha", "idx": 2, "p_idx": 120, "s": 4 }
+    body = {
+        "u": "nome",
+        "pw": "senha",
+        "idx": 2,
+        "p_idx": 120,
+        "s": 4,
+        "c": "Comentário explicando a escolha"
+    }
     """
     try:
         u = b.get("u")
@@ -160,11 +167,14 @@ def update_score(b: dict):
         i_orig = b.get("idx")
         i_pair = b.get("p_idx")
         s = b.get("s")
+        c = b.get("c")  # ← novo campo: comentário
 
         if not u or not pw:
             raise ValueError("Campos 'u' e 'pw' são obrigatórios.")
         if not isinstance(s, (int, float)) or not (1 <= s <= 4):
             raise ValueError("Score deve ser entre 1–4.")
+        if not c or not c.strip():
+            raise ValueError("Comentário ('c') é obrigatório.")
 
         udir = USERS / u
         check_pass(udir, pw)
@@ -175,14 +185,25 @@ def update_score(b: dict):
         ps = read_json(pairs)
         all_ps = ps.get("all", [])
 
+        # Atualiza o original
         if 0 <= i_orig < len(data):
             data[i_orig]["s"] = s
+            data[i_orig]["c"] = c
+
+        # Atualiza o par correspondente
         if 0 <= i_pair < len(all_ps):
             all_ps[i_pair]["s"] = s
+            all_ps[i_pair]["c"] = c
 
         save_json(data, orig)
         save_json(ps, pairs)
 
-        return {"ok": True, "msg": f"Score salvo ({i_orig}, {i_pair})", "next": i_pair + 1 if i_pair + 1 < len(all_ps) else None}
+        return {
+            "ok": True,
+            "msg": f"Score salvo ({i_orig}, {i_pair})",
+            "comment": c,
+            "next": i_pair + 1 if i_pair + 1 < len(all_ps) else None
+        }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
