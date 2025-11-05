@@ -44,13 +44,8 @@ def calcular_media_usuario(orig_path: Path) -> dict:
             f"列_{col}_タイトル総数": total_por_coluna[col],
         }
 
-    # 列ごとのスコア平均を使って全体平均を算出
-    valores = [v["平均値"] for v in medias.values() if v["平均値"] is not None]
-    media_geral = round(sum(valores) / len(valores), 2) if valores else None
-
     return {
         "列ごとの平均": medias,
-        "全体平均": media_geral,
         "スコア付き合計": total_scores,
         "タイトル総数": total_titulos,
     }
@@ -102,16 +97,9 @@ def gerar_medias_gerais():
         if cont_global[col] > 0
     }
 
-    # 全体のグローバル平均
-    media_global_geral = (
-        round(sum(medias_globais.values()) / len(medias_globais), 2)
-        if medias_globais
-        else None
-    )
-
-    # グローバルサマリーを追加
+    # 全体サマリーを作成（全体平均値は削除）
     resumo_global = {
-        "ユーザー": "🌏 全体平均（全ユーザー）",
+        "ユーザー": "🌏 全体統計（全ユーザー）",
         "列ごとの平均": {
             col: {
                 "全体列平均": media,
@@ -119,7 +107,6 @@ def gerar_medias_gerais():
             }
             for col, media in medias_globais.items()
         },
-        "全体平均値": media_global_geral,
         "全スコア件数": total_scores_global,
         "全タイトル件数": total_titulos_global,
     }
@@ -139,12 +126,25 @@ if __name__ == "__main__":
     print("📊 全ユーザーのスコア平均を計算しています...\n")
     dados = gerar_medias_gerais()
 
-    print("\n📈 最終サマリー:")
+    print("\n📈 各ユーザーの詳細結果:")
     for d in dados:
-        if d["ユーザー"] == "🌏 全体平均（全ユーザー）":
-            print(f"\n🌍 全体平均値: {d['全体平均値']}")
+        print("\n" + "=" * 60)
+        print(f"👤 ユーザー: {d['ユーザー']}")
+        if d["ユーザー"].startswith("🌏"):
+            # 全体統計
+            print("\n🌍 全体の列別平均:")
+            for col, info in d["列ごとの平均"].items():
+                print(
+                    f"  - 列 {col}: 平均 {info['全体列平均']}（スコア付きユーザー数 {info['スコア付きユーザー数']}）"
+                )
+            print(f"\n🧮 全スコア件数: {d['全スコア件数']}")
+            print(f"📊 全タイトル件数: {d['全タイトル件数']}")
         else:
-            print(
-                f"👤 {d['ユーザー']}: 平均 {d['全体平均']}, "
-                f"スコア数 {d['スコア付き合計']}/{d['タイトル総数']}"
-            )
+            print("\n📋 列ごとの詳細:")
+            for col, info in d["列ごとの平均"].items():
+                avg = info["平均値"] if info["平均値"] is not None else "―"
+                print(
+                    f"  - 列 {col}: 平均 {avg}｜スコア付き {info['スコア付きタイトル数']} / 総数 {info[f'列_{col}_タイトル総数']}"
+                )
+            print(f"\n🧮 スコア付き合計: {d['スコア付き合計']}")
+            print(f"📊 タイトル総数: {d['タイトル総数']}")
