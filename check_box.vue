@@ -19,12 +19,18 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-// controla qual checkbox está ativo
-const ativo = ref<'a' | 'b'>('a')
+// Estado — ambos começam desligados
+const ativo = ref<'a' | 'b' | null>(null)
 
-// alterna entre os checkboxes
+// Função que alterna o estado dos checkboxes
 function alternar(opcao: 'a' | 'b') {
-    ativo.value = opcao
+    // Se já está ativo → desativa
+    if (ativo.value === opcao) {
+        ativo.value = null
+    } else {
+        // Caso contrário → ativa o selecionado e desativa o outro
+        ativo.value = opcao
+    }
 }
 </script>
 
