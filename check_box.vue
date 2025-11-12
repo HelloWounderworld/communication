@@ -1,30 +1,88 @@
 <template>
-    <div class="q-pa-md">
-        <div class="q-gutter-md flex justify-center">
-            <q-checkbox v-model="ativo" val="a" label="チェック A" color="teal" keep-color @update:model-value="alternar" />
-            <q-checkbox v-model="ativo" val="b" label="チェック B" color="orange" keep-color
-                @update:model-value="alternar" />
-        </div>
+    <div class="check-container">
+        <!-- Checkbox A -->
+        <label class="check-item" :class="{ ativo: ativo === 'a', teal: ativo === 'a' }" @click="alternar('a')">
+            <input type="checkbox" hidden />
+            <span class="box"></span>
+            <span class="label-text">Teal</span>
+        </label>
+
+        <!-- Checkbox B -->
+        <label class="check-item" :class="{ ativo: ativo === 'b', red: ativo === 'b' }" @click="alternar('b')">
+            <input type="checkbox" hidden />
+            <span class="box"></span>
+            <span class="label-text">Red</span>
+        </label>
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 
-// Estado — controla qual checkbox está ativo
-const ativo = ref<'a' | 'b'>('a') // A começa ativo por padrão
+// controla qual checkbox está ativo
+const ativo = ref<'a' | 'b'>('a')
 
-function alternar(v: 'a' | 'b') {
-    ativo.value = v // alterna o ativo (só um fica ligado)
+// alterna entre os checkboxes
+function alternar(opcao: 'a' | 'b') {
+    ativo.value = opcao
 }
 </script>
 
 <style scoped>
-.q-pa-md {
+.check-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    flex-direction: column;
-    margin-top: 2rem;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: #333;
+}
+
+/* estilo geral do checkbox */
+.check-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    color: #fff;
+    font-size: 1.1rem;
+    user-select: none;
+}
+
+/* caixa do checkbox */
+.check-item .box {
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    border: 2px solid #ccc;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s ease;
+}
+
+/* ícone do check (✓) */
+.check-item.ativo .box::after {
+    content: "✓";
+    font-size: 18px;
+    color: white;
+}
+
+/* cor teal */
+.check-item.teal.ativo .box {
+    background: #009688;
+    border-color: #00796b;
+}
+
+/* cor red */
+.check-item.red.ativo .box {
+    background: #f44336;
+    border-color: #c62828;
+}
+
+/* hover suave */
+.check-item:hover .box {
+    border-color: #aaa;
 }
 </style>
