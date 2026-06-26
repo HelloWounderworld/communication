@@ -1,3 +1,9 @@
+Sim, é totalmente possível! Vou adaptar o script para suportar múltiplas precisões (FP4, 8-bit, BF16, FP16) e execução em **multi-GPU** via `accelerate` e `device_map`. Vou buscar as práticas mais recentes para garantir compatibilidade.
+Sim, é totalmente possível! Vou criar um script completo e flexível que suporta **todas as precisões** (FP4, 8-bit, BF16, FP16) e **multi-GPU** via `accelerate`/`device_map`. O `device_map="auto"` do Hugging Face já gerencia automaticamente a distribuição do modelo entre múltiplas GPUs , e para inferência em multi-GPU com paralelismo de tensores, o **vLLM** é a opção mais robusta .
+
+Vou criar o script adaptado:
+
+```python
 #!/usr/bin/env python3
 """
 ================================================================================
@@ -248,7 +254,7 @@ def carregar_modelo(caminho_base: str, caminho_lora: str, precisao: str):
     if config.quantization_config is not None:
         kwargs["quantization_config"] = config.quantization_config
         # NUNCA passar load_in_4bit/load_in_8bit junto com quantization_config
-        # citeweb_search:3#8
+        # 
     
     # Para BF16/FP16 sem quantização, usar attn_implementation mais eficiente
     if config.quantization_config is None:
@@ -300,7 +306,7 @@ def gerar_titulos_beam_search(modelo, tokenizer, materia: str, config_beam: dict
     
     # Mover para o dispositivo correto (device_map='auto' já distribuiu o modelo)
     # Não precisamos .to(modelo.device) quando usar device_map='auto'
-    # citeweb_search:3#0
+    # 
     
     print(f"\n{'='*70}")
     print("GERAÇÃO COM BEAM SEARCH")
@@ -561,3 +567,104 @@ Exemplos de uso:
 
 if __name__ == "__main__":
     main()
+```
+
+---
+
+## Instalação e Dependências
+
+```bash
+# Dependências principais
+pip install transformers accelerate bitsandbytes peft torch
+
+# Opcional: Flash Attention 2 (aceleração para BF16/FP16 em GPUs recentes)
+pip install flash-attn --no-build-isolation
+
+# Para multi-GPU com DeepSpeed (alternativa avançada)
+pip install deepspeed
+```
+
+---
+
+## Como Usar
+
+### 1. **FP4 (Recomendado para multi-GPU com VRAM limitada)**
+
+```bash
+python gerador_titulos.py \
+    --base ./Llama-3.3-70B-Instruct \
+    --lora ./lora-titulos-jornalismo \
+    --precisao fp4 \
+    --beams 15 \
+    --retornar 10 \
+    --diversidade
+```
+
+**VRAM estimada:** ~42 GB total (distribuído automaticamente entre GPUs via `device_map="auto"`)
+
+### 2. **INT8 (Balanceado)**
+
+```bash
+python gerador_titulos.py \
+    --base ./Llama-3.3-70B-Instruct \
+    --lora ./lora-titulos-jornalismo \
+    --precisao int8 \
+    --beams 12 \
+    --retornar 8
+```
+
+**VRAM estimada:** ~75 GB total
+
+### 3. **BF16 (Qualidade máxima, requer multi-GPU potente)**
+
+```bash
+python gerador_titulos.py \
+    --base ./Llama-3.3-70B-Instruct \
+    --lora ./lora-titulos-jornalismo \
+    --precisao bf16 \
+    --beams 10 \
+    --retornar 5
+```
+
+**VRAM estimada:** ~140 GB total (ex: 2x A100 80GB ou 4x RTX 4090 24GB)
+
+### 4. **Modo não-interativo (script/batch)**
+
+```bash
+python gerador_titulos.py \
+    --base ./Llama-3.3-70B-Instruct \
+    --lora ./lora-titulos-jornalismo \
+    --precisao fp4 \
+    --materia "O governo federal anunciou nesta terça-feira um pacote de medidas econômicas destinadas a estimular o crescimento do PIB..."
+```
+
+---
+
+## Comandos no Modo Interativo
+
+| Comando | Ação |
+|---|---|
+| `/sair` | Encerra o programa |
+| `/config` | Mostra configuração atual do beam search |
+| `/precisao` | Mostra precisão atual carregada |
+| `/diversidade ON` | Ativa Group Beam Search (títulos mais diversos) |
+| `/diversidade OFF` | Desativa diversidade |
+| `/beams 15` | Altera largura do beam para 15 |
+| `/retornar 8` | Altera para retornar 8 títulos |
+| `/tokens 80` | Altera máximo de tokens para 80 |
+
+---
+
+## Pontos Críticos para Multi-GPU
+
+1. **`device_map="auto"`** — O Hugging Face Accelerate distribui automaticamente as camadas do modelo entre todas as GPUs disponíveis. Não precisa configurar manualmente .
+
+2. **Nunca misture `load_in_4bit`/`load_in_8bit` com `quantization_config`** — Isso gera `ValueError`. Use apenas `quantization_config` .
+
+3. **Para BF16/FP16 sem quantização** — O modelo é carregado em precisão nativa e o `device_map` distribui camadas entre GPUs. Flash Attention 2 acelera significativamente.
+
+4. **Se VRAM total for insuficiente** — O Accelerate automaticamente faz offload para CPU. Fica mais lento, mas funciona.
+
+5. **Para inferência em produção com multi-GPU** — Considere **vLLM** com `tensor_parallel_size` para throughput máximo .
+
+Se precisar de uma versão otimizada com **vLLM** para throughput em produção, me avise! 🚀
