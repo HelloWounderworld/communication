@@ -304,3 +304,129 @@ source venv/bin/activate
 - [ ] Criar ambiente virtual do projeto
 
 **Quer que eu detalhe algum passo específico da instalação?**
+
+Esse erro é clássico em servidores corporativos ou atrás de proxies. O `pip` não consegue validar o certificado SSL do PyPI porque:
+
+1. **Falta o pacote de certificados CA** (`ca-certificates`), ou
+2. **Há um proxy/firewall corporativo** fazendo interceptação SSL (MITM), ou  
+3. **A data/hora do sistema está errada** (menos comum, mas possível).
+
+Vamos diagnosticar e resolver passo a passo:
+
+---
+
+## **FASE 1: DIAGNÓSTICO RÁPIDO**
+
+### **Passo 1: Verificar se é problema de data/hora**
+```bash
+timedatectl status
+```
+✅ **Esperado:** `System clock synchronized: yes` e `NTP service: active`  
+❌ **Se estiver desativado:** `sudo timedatectl set-ntp true`
+
+---
+
+### **Passo 2: Verificar se há proxy corporativo**
+```bash
+env | grep -i proxy
+cat /etc/environment | grep -i proxy
+```
+✅ **Esperado:** Vazio ou configurado corretamente.  
+❌ **Se houver proxy:** Anote o endereço. Você precisará configurar o `pip` para usá-lo.
+
+---
+
+### **Passo 3: Testar conectividade básica com PyPI**
+```bash
+curl -I https://pypi.org/simple/
+```
+✅ **Esperado:** `HTTP/2 200`  
+❌ **Se der erro SSL:** Problema de certificado no sistema.  
+❌ **Se der timeout:** Problema de rede/proxy.
+
+---
+
+### **Passo 4: Verificar se há interceptação SSL (MITM)**
+```bash
+openssl s_client -connect pypi.org:443 -servername pypi.org < /dev/null 2>/dev/null | openssl x509 -noout -issuer -subject
+```
+✅ **Esperado:** `issuer=C = US, O = Let's Encrypt, CN = R3` (ou similar)  
+❌ **Se aparecer seu empresa/organização:** Há um proxy interceptando SSL. Você precisará do certificado da empresa.
+
+---
+
+## **FASE 2: SOLUÇÕES**
+
+### **Solução 1: Atualizar certificados CA (Mais comum)**
+```bash
+sudo apt install --reinstall ca-certificates
+sudo update-ca-certificates
+```
+Depois, tente instalar novamente:
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+### **Solução 2: Se houver proxy corporativo com SSL interception**
+Se o Passo 4 mostrou que sua empresa intercepta SSL:
+
+1. **Obtenha o certificado da empresa** (geralmente um arquivo `.crt` ou `.pem` fornecido pelo TI).
+2. **Copie o certificado para o sistema:**
+   ```bash
+   sudo cp sua-empresa.crt /usr/local/share/ca-certificates/
+   sudo update-ca-certificates
+   ```
+3. **Configure o `pip` para usar o certificado:**
+   ```bash
+   pip install --cert /usr/local/share/ca-certificates/sua-empresa.crt -r requirements.txt
+   ```
+   Ou, para tornar permanente:
+   ```bash
+   pip config set global.cert /usr/local/share/ca-certificates/sua-empresa.crt
+   ```
+
+---
+
+### **Solução 3: Configurar proxy (se necessário)**
+Se houver um proxy e ele não estiver configurado:
+```bash
+export HTTP_PROXY=http://proxy.sua-empresa.com:8080
+export HTTPS_PROXY=http://proxy.sua-empresa.com:8080
+pip install -r requirements.txt
+```
+Para tornar permanente, adicione ao `~/.bashrc`.
+
+---
+
+### **Solução 4: Workaround temporário (NÃO RECOMENDADO para produção)**
+Se você precisa instalar **agora** e confia na rede:
+```bash
+pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements.txt
+```
+⚠️ **Atenção:** Isso desativa a verificação SSL e pode expor você a ataques man-in-the-middle. Use apenas como último recurso.
+
+---
+
+## **FASE 3: VERIFICAÇÃO PÓS-CORREÇÃO**
+
+Após aplicar a solução, verifique:
+```bash
+pip install --upgrade pip  # Testa instalação simples
+pip install scenedetect    # Testa o pacote específico do erro
+```
+
+---
+
+## **RESUMO PARA SEU CASO**
+
+| Cenário | Solução |
+|---------|---------|
+| **Data/hora errada** | `sudo timedatectl set-ntp true` |
+| **Certificados CA desatualizados** | `sudo apt install --reinstall ca-certificates && sudo update-ca-certificates` |
+| **Proxy corporativo com SSL interception** | Obter certificado da empresa e configurar `pip --cert` |
+| **Proxy não configurado** | Definir `HTTP_PROXY`/`HTTPS_PROXY` |
+| **Rede confiável (workaround)** | `pip install --trusted-host pypi.org ...` |
+
+**Qual foi o resultado do diagnóstico?** Me diga o que apareceu nos Passos 1-4 que eu te ajudo a aplicar a solução exata.
