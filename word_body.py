@@ -1,97 +1,92 @@
+import re
 import unicodedata
 import fugashi
 
 def tratar_e_normalizar_utf8(texto):
-    """
-    Garante que o texto esteja em string UTF-8 limpa e normaliza 
-    Katakanas e símbolos para o padrão Full-Width (NFKC), evitando quebras de bytes.
-    """
     if isinstance(texto, bytes):
         texto = texto.decode('utf-8', errors='ignore')
-    
-    # Converte variações como half-width (ﾏｽｸ) para full-width (マスク)
-    # de modo que a verificação de Katakana seja 100% precisa
     return unicodedata.normalize('NFKC', texto)
 
-
-def eh_katakana(texto):
+def proteger_nomes_katakana(texto):
     """
-    Função auxiliar que verifica se todos os caracteres da string 
-    pertencem ao bloco Unicode do Katakana (incluindo o traço longo ー).
+    Substitui temporariamente '・' por um placeholder em nomes Katakana
+    para evitar que o Fugashi quebre indevidamente.
     """
-    for char in texto:
-        codigo = ord(char)
-        # Range Unicode do Katakana padrão e do traço de prolongamento (ー)
-        if not (0x30A0 <= codigo <= 0x30FF or char == 'ー'):
-            return False
-    return True
+    # Regex: Katakana+ (・Katakana+)+
+    # Captura sequências como イーロン・マスク, A・B・C
+    pattern = re.compile(r'[ァ-ヶー]+(?:・[ァ-ヶー]+)+')
+    
+    def substituir(match):
+        # Substitui ・ por um caractere raro que não conflita
+        return match.group(0).replace('・', '\u0001')  # \u0001 = SOH (Start of Heading)
+    
+    return pattern.sub(substituir, texto)
 
+def restaurar_nomes_katakana(texto):
+    """Restaura o '・' original"""
+    return texto.replace('\u0001', '・')
 
 def mesclar_nomes_katakana(tokens_fugashi):
     """
-    Recebe a lista de nós gerada pelo Fugashi Tagger e reconstrói 
-    as quebras causadas pelo caractere '・' quando cercado por Katakanas.
-    Runs em O(n) - Linear e direto.
+    Agora simplificada: só precisa juntar tokens que foram separados
+    mas ainda contêm o placeholder (caso o Fugashi ainda quebre).
     """
     palavras_processadas = []
-    i = 0
-    n = len(tokens_fugashi)
+    buffer = ""
     
-    while i < n:
-        # Verifica se o nó atual é Katakana e se os próximos formam "・" + Katakana
-        if (i + 2 < n and 
-            eh_katakana(tokens_fugashi[i].surface) and 
-            tokens_fugashi[i+1].surface == "・" and 
-            eh_katakana(tokens_fugashi[i+2].surface)):
-            
-            # Inicia a fusão da entidade
-            entidade_mesclada = tokens_fugashi[i].surface + tokens_fugashi[i+1].surface + tokens_fugashi[i+2].surface
-            pos_final = tokens_fugashi[i].feature.pos1  # Mantém a classe gramatical original (geralmente 名詞)
-            
-            i += 3  # Avança o ponteiro por ter consumido 3 nós
-            
-            # Loop Look-ahead extra para capturar nomes compostos triplos ou maiores (ex: A・B・C)
-            while i + 1 < n and tokens_fugashi[i].surface == "・" and eh_katakana(tokens_fugashi[i+1].surface):
-                entidade_mesclada += tokens_fugashi[i].surface + tokens_fugashi[i+1].surface
-                i += 2
-                
-            palavras_processadas.append({
-                "surface": entidade_mesclada,
-                "pos": pos_final,
-                "foi_mesclado": True
-            })
-        else:
-            # Caso normal: mantém a palavra exatamente como o Fugashi extraiu
-            # Tratamento preventivo caso o recurso venha vazio (None)
-            pos = tokens_fugashi[i].feature.pos1 if tokens_fugashi[i].feature.pos1 else "未知語"
-            
-            palavras_processadas.append({
-                "surface": tokens_fugashi[i].surface,
-                "pos": pos,
-                "foi_mesclado": False
-            })
-            i += 1
-            
+    for token in tokens_fugashi:
+        surface = token.surface
+        
+        # Se contém o placeholder, ainda precisa de tratamento especial
+        if '\u0001' in surface or buffer:
+            buffer += surface
+            # Se o próximo não continua o padrão, fecha o buffer
+            if not surface.endswith('\u0001') and '\u0001' not in surface:
+                palavras_processadas.append({
+                    "surface": restaurar_nomes_katakana(buffer),
+                    "pos": token.feature.pos1 or "未知語",
+                    "foi_mesclado": True
+                })
+                buffer = ""
+            continue
+        
+        # Caso normal
+        pos = token.feature.pos1 if token.feature.pos1 else "未知語"
+        palavras_processadas.append({
+            "surface": surface,
+            "pos": pos,
+            "foi_mesclado": False
+        })
+    
+    # Caso sobre algo no buffer no final
+    if buffer:
+        palavras_processadas.append({
+            "surface": restaurar_nomes_katakana(buffer),
+            "pos": "未知語",
+            "foi_mesclado": True
+        })
+    
     return palavras_processadas
 
-# 1. Instancia o seu Tagger padrão do seu projeto
+# ========== USO ==========
 tagger = fugashi.Tagger()
 
-# Matéria de exemplo vindo do seu crawler
-materia_jornalistica = "昨夜、イーロン・マスク氏とティム・クック氏が新しいテクノロジーについて会談した。"
+materia = "昨夜、イーロン・マスク氏とティム・クック氏が新しいテクノロジーについて会談した。"
 
-# 2. Executa a limpeza UTF-8 antes do Tagger
-texto_limpo = tratar_e_normalizar_utf8(materia_jornalistica)
+# 1. Normaliza
+texto_limpo = tratar_e_normalizar_utf8(materia)
 
-# 3. Executa o parser do Fugashi
-nos_originais = list(tagger(texto_limpo))
+# 2. Protege os nomes compostos (NOVO PASSO)
+texto_protegido = proteger_nomes_katakana(texto_limpo)
 
-# 4. Corrige a fragmentação do ponto médio ('・') após o processamento
-resultado_final = mesclar_nomes_katakana(nos_originais)
+# 3. Fugashi processa
+nos = list(tagger(texto_protegido))
 
-# Resultado limpo e estruturado
-for token in resultado_final:
+# 4. Restaura e mescla se necessário
+resultado = mesclar_nomes_katakana(nos)
+
+for token in resultado:
     if token["foi_mesclado"]:
-        print(f"🌟 Palavra Corrigida: {token['surface']} | Tipo: {token['pos']}")
+        print(f"🌟 {token['surface']} | {token['pos']}")
     else:
-        print(f"Palavra: {token['surface']}")
+        print(f"   {token['surface']}")
