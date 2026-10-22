@@ -73,3 +73,25 @@ def mesclar_nomes_katakana(tokens_fugashi):
             i += 1
             
     return palavras_processadas
+
+# 1. Instancia o seu Tagger padrão do seu projeto
+tagger = fugashi.Tagger()
+
+# Matéria de exemplo vindo do seu crawler
+materia_jornalistica = "昨夜、イーロン・マスク氏とティム・クック氏が新しいテクノロジーについて会談した。"
+
+# 2. Executa a limpeza UTF-8 antes do Tagger
+texto_limpo = tratar_e_normalizar_utf8(materia_jornalistica)
+
+# 3. Executa o parser do Fugashi
+nos_originais = list(tagger(texto_limpo))
+
+# 4. Corrige a fragmentação do ponto médio ('・') após o processamento
+resultado_final = mesclar_nomes_katakana(nos_originais)
+
+# Resultado limpo e estruturado
+for token in resultado_final:
+    if token["foi_mesclado"]:
+        print(f"🌟 Palavra Corrigida: {token['surface']} | Tipo: {token['pos']}")
+    else:
+        print(f"Palavra: {token['surface']}")
