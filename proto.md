@@ -34,7 +34,12 @@ scripts: ["inventario_php.sh", "Inventario-PHP.ps1"]
 
 ## A.2 Leitura crítica (o que a cobertura da imprensa distorce)
 
-1. **"Ataque cibernético de escala global" precisa ser decomposto.** O que está confirmado é **tentativa de exploração em massa**, observada em honeypots por vários grupos. A taxa de sucesso contra sistemas reais **não está confirmada**, e exploits públicos que circulam não foram validados. Isso não reduz a urgência: em falha pré-autenticação com PoC vazado, tentativa vira sucesso rápido. Mas a decisão certa é "patch agora", não "presuma que todo servidor PHP do mundo caiu".
+1. **"Ataque cibernético de escala global" é preciso, desde que se separe o que aconteceu.** Houve três coisas distintas, e as três foram globais:
+   - **Alerta e resposta governamental global:** NSA (EUA), NCSC (Reino Unido), CERT-EU, Singapura, Austrália; no Japão, a primeira-ministra pediu publicamente que todos verificassem ainda naquela noite se seus sites usavam PHP, e considerassem suspendê-los se não pudessem corrigir.
+   - **Interrupção de serviços em massa:** Wikimedia, o governo da Finlândia, a prefeitura de Edimburgo, a agência de cibersegurança da Holanda, a BBC e a Universidade de Genebra, entre outros, tiraram sites do ar. Isso foi, em grande parte, **desligamento preventivo**: o dano à disponibilidade veio da defesa, não necessariamente de invasões.
+   - **Exploração:** tentativas em massa confirmadas em honeypots, inclusive dias antes da divulgação. Comprometimentos bem-sucedidos em sistemas reais ainda não tinham sido quantificados publicamente em 22/10.
+
+   A distinção importa para a sua resposta: o desligamento preventivo mostra que organizações com equipe de segurança julgaram o risco alto o bastante para aceitar ficar fora do ar. Para você, a conclusão é a mesma: atualizar já e, se houve exposição, investigar desde 17/10.
 
 2. **Por que não estar no KEV não é motivo para esperar.** O KEV exige evidência de exploração bem-sucedida e leva dias para incluir uma CVE. Na Parte 0.3 do protocolo de OS, KEV é o segundo critério de prioridade; aqui, **exposição + pré-autenticação + exploração em curso** já bastam para tratar como P1.
 
@@ -308,5 +313,6 @@ Pacotes de PHP no Ubuntu ficam no repositório **main** (cobertos pela Canonical
 - Tenable — FAQ PHP2Shell: https://www.tenable.com/blog/php2shell-cve-2026-109618-cve-2026-109619-frequently-asked-questions-about-critical-php-remote
 - watchTowr — FAQ PHP2Shell: https://watchtowr.com/intelligence/php-cve-2026-109618-faq/
 - Patchstack — alerta: https://patchstack.com/articles/php-major-vulnerability-alert-10-2026/
+- BBC News Brasil, 22/10/2026 — "O que é PHP e a falha grave de segurança detectada por IA que tirou sites do ar" (enviado pelo usuário)
 - Canonical — página da CVE (versões corrigidas por release): https://ubuntu.com/security/CVE-2026-109618
 - Help Net Security — extensão do ESU do Windows 10: https://www.helpnetsecurity.com/2026/06/26/microsoft-windows-10-free-security-updates-esu-program/
